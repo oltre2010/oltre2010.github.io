@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マスタースケジュール作成 | 工事スケジュールをメモから自動作成</title>
+<meta name="description" content="日付入りのメモを貼り付けるだけで、内装・店舗工事のマスタースケジュール（工程表）を自動作成。A3横でPDF出力できます。登録不要・無料。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="マスタースケジュール作成">
+<meta property="og:description" content="メモを貼るだけで工事の工程表を自動作成。A3横でPDF出力できます。登録不要・無料。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F3864'/%3E%3Crect x='12' y='18' width='40' height='6' rx='2' fill='%23FBE5D6'/%3E%3Crect x='12' y='29' width='28' height='6' rx='2' fill='%23DEEBF7'/%3E%3Crect x='12' y='40' width='34' height='6' rx='2' fill='%23E2EFDA'/%3E%3C/svg%3E">
+<style id="pageStyle">@page { size: A3 landscape; margin: 8mm; }</style>
+<style>
+:root{
+  --navy:#1F3864; --blue:#2E75B6; --line:#9aa4b0; --line-light:#c9cfd6;
+  --sat:#DCE6F1; --sun:#F8CBCB; --bg:#f0f2f5;
+  --page-w:1527px;   /* A3横の印刷可能幅(420-16mm)を96dpi換算 */
+  --lane-h:112px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  background:var(--bg); color:#222; font-size:14px;
+}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit; font-size:13px;}
+
+/* ===== 共通 ===== */
+.app-header{
+  background:var(--navy); color:#fff; padding:10px 18px;
+  display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:50;
+}
+.app-header h1{font-size:16px; font-weight:700; flex:none; white-space:nowrap;
+  max-width:38vw; overflow:hidden; text-overflow:ellipsis;}
+.app-header .spacer{flex:1;}
+.head-note{font-size:11px; color:#9db3d4; white-space:nowrap;}
+.btn{
+  border:1px solid #ccc; background:#fff; border-radius:6px; padding:7px 14px; font-size:13px;
+}
+.btn:hover{background:#f3f6fa;}
+.btn-primary{background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600;}
+.btn-primary:hover{background:#255f96;}
+.btn-danger{color:#b3261e; border-color:#e2b4b1;}
+.btn-danger:hover{background:#fdf0ef;}
+button[data-armed]{background:#b3261e !important; border-color:#b3261e !important; color:#fff !important;}
+.btn-sm{padding:3px 9px; font-size:12px; border-radius:5px;}
+.hidden{display:none !important;}
+
+/* ===== 一覧 ===== */
+#listView .wrap{max-width:1000px; margin:24px auto; padding:0 16px;}
+.toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px;}
+.toolbar label{font-size:12px; color:#555;}
+.toolbar input[type=month], .toolbar input[type=search]{
+  border:1px solid #ccc; border-radius:6px; padding:6px 10px; background:#fff;
+}
+.toolbar .spacer{flex:1;}
+.proj-table{width:100%; border-collapse:collapse; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); border-radius:8px; overflow:hidden;}
+.proj-table th{background:var(--navy); color:#fff; font-size:12px; padding:9px 12px; text-align:left; font-weight:600;}
+.proj-table td{padding:10px 12px; border-top:1px solid #eef0f3; font-size:13px; vertical-align:middle;}
+.proj-table tr.row:hover{background:#f5f8fc; cursor:pointer;}
+.proj-name{font-weight:700; color:var(--navy);}
+.empty{padding:48px; text-align:center; color:#888; background:#fff; border-radius:8px;}
+.intro{background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:32px 30px; text-align:center;}
+.intro h2{font-size:19px; color:var(--navy); margin-bottom:10px;}
+.intro p{font-size:13.5px; color:#555; line-height:1.9; max-width:620px; margin:0 auto;}
+.intro-btns{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:22px 0 20px;}
+.intro-btns .btn{padding:11px 22px; font-size:14px;}
+.intro .note{font-size:12px; color:#8a8f96; background:#f6f8fa; border-radius:8px; padding:12px 16px; margin-top:4px; text-align:left;}
+.site-foot{max-width:1000px; margin:8px auto 40px; padding:0 16px; font-size:11.5px; color:#98a0a8; line-height:1.9;}
+
+@media(max-width:760px){
+  .app-header{flex-wrap:wrap; gap:8px; padding:10px 12px;}
+  .app-header h1{font-size:15px; width:100%; max-width:none; white-space:normal;}
+  .head-note{display:none;}
+  .proj-table th, .proj-table td{padding:8px 6px; font-size:12px;}
+  .proj-table td:first-child{min-width:104px;}
+  .proj-table .btn-sm{padding:4px 8px;}
+  #listView .wrap{margin:16px auto; padding:0 10px;}
+  #editorView .ed-wrap{padding:0 10px 40px;}
+  .proj-table th:nth-child(2), .proj-table td:nth-child(2),
+  .proj-table th:nth-child(3), .proj-table td:nth-child(3){display:none;}
+  .lane-box{padding:10px 8px;}
+  .lane-box table{display:block; overflow-x:auto; white-space:nowrap;}
+  .intro{padding:24px 18px;}
+}
+
+/* ===== 編集画面 ===== */
+#editorView .ed-wrap{max-width:1400px; margin:18px auto; padding:0 16px 60px;}
+.panel{background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:16px 18px; margin-bottom:16px;}
+.panel h2{font-size:14px; color:var(--navy); border-left:4px solid var(--blue); padding-left:8px; margin-bottom:12px;}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+@media(max-width:900px){.grid2{grid-template-columns:1fr;}}
+.field{margin-bottom:10px;}
+.field label{display:block; font-size:12px; color:#555; margin-bottom:3px;}
+.field input[type=text], .field input[type=date], .field input[type=month], .field input[type=number], .field textarea, .field select{
+  width:100%; border:1px solid #ccc; border-radius:6px; padding:7px 10px; background:#fff;
+}
+.field textarea{resize:vertical;}
+.inline-fields{display:flex; gap:12px; flex-wrap:wrap;}
+.inline-fields .field{flex:1; min-width:130px;}
+.hint{font-size:11.5px; color:#888; margin-top:6px; line-height:1.6;}
+.warn{font-size:12px; color:#a15c00; background:#fff7e8; border:1px solid #f0d9a8; border-radius:6px; padding:8px 10px; margin-top:8px; white-space:pre-line;}
+
+.ed-table{width:100%; border-collapse:collapse;}
+.ed-table th{font-size:11px; color:#666; text-align:left; padding:4px 6px; font-weight:600;}
+.ed-table td{padding:3px 4px; vertical-align:top;}
+.ed-table input[type=text], .ed-table input[type=date], .ed-table textarea, .ed-table select{
+  width:100%; border:1px solid #d5d9de; border-radius:5px; padding:5px 7px;
+}
+.ed-table textarea{resize:vertical; min-height:34px;}
+.rowbtns{display:flex; gap:3px;}
+.rowbtns button{border:1px solid #d5d9de; background:#fff; border-radius:4px; width:24px; height:24px; font-size:12px; line-height:1;}
+.rowbtns button:hover{background:#eef2f7;}
+.lane-box{border:1px solid #e2e6ea; border-radius:8px; padding:12px; margin-bottom:12px;}
+.lane-head{display:flex; gap:10px; align-items:center; margin-bottom:8px;}
+.lane-head input{border:1px solid #d5d9de; border-radius:5px; padding:5px 8px; width:200px;}
+.lane-head .spacer{flex:1;}
+.color-cell{display:flex; align-items:center; gap:4px;}
+.color-swatch{width:16px; height:16px; border-radius:3px; border:1px solid #bbb; flex:none;}
+
+.savestat{font-size:12px; color:#cfe0f5;}
+
+/* ===== プレビュー（＝印刷対象） ===== */
+#printArea{
+  background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.12); border-radius:4px;
+  padding:20px; overflow:hidden;
+}
+#pageWrap{overflow:hidden;}
+#pageInner{width:var(--page-w); transform-origin:top left;}
+.pv-title{
+  width:640px; max-width:100%; margin:0 auto 26px;
+  background:var(--navy); color:#fff; text-align:center; font-size:16px; font-weight:700; padding:8px 6px;
+  border:1.5px solid var(--navy);
+}
+
+.cal-block{margin-bottom:22px;}
+.cal{width:100%; border-collapse:collapse; table-layout:fixed;}
+.cal col.lblcol{width:74px;}
+.cal th,.cal td{border:1px solid var(--line-light); overflow:hidden;}
+.cal .lbl{
+  background:#fff; font-size:10px; font-weight:600; color:#333; text-align:center;
+  border:1px solid var(--line);
+}
+.cal .rw-month th.mh{font-size:12px; font-weight:700; padding:3px 0; text-align:center; border:1px solid var(--line); background:#fff;}
+.cal .rw-dow td, .cal .rw-day td{
+  font-size:7.5px; text-align:center; padding:2px 0; color:#333; background:#fff;
+}
+.cal .rw-dow td.sat{background:var(--sat);}
+.cal .rw-dow td.sun{background:var(--sun);}
+.cal .rw-lane{height:var(--lane-h);}
+.cal .rw-lane td{background:#fff;}
+.cal .rw-lane th.lbl{font-size:10.5px;}
+.cal td.barcell{vertical-align:middle; padding:0;}
+.cal .bar-in{
+  font-size:9.5px; line-height:1.45; text-align:center;
+  white-space:normal; overflow-wrap:anywhere; word-break:break-word;
+  overflow:hidden; padding:2px 2px;
+}
+.cal td.barcell.v .bar-in{
+  writing-mode:vertical-rl; text-orientation:upright; white-space:normal;
+  margin:0 auto; max-height:calc(var(--lane-h) - 10px); letter-spacing:1px; font-size:8.5px; padding:2px 0;
+}
+
+/* ===== 印刷 ===== */
+@media print{
+  *{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;}
+  body{background:#fff;}
+  .app-header, .editor-forms, .no-print{display:none !important;}
+  #listView{display:none !important;}
+  #editorView .ed-wrap{max-width:none; margin:0; padding:0;}
+  #printArea{box-shadow:none; border-radius:0; padding:0; overflow:visible;}
+  #pageWrap{height:auto !important; overflow:visible !important;}
+  #pageInner{transform:none !important; width:100% !important;}
+  .cal{min-width:0;}
+  .cal-block{page-break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 一覧画面 ============ -->
+<div id="listView">
+  <header class="app-header">
+    <h1>マスタースケジュール作成</h1>
+    <span class="head-note">データはこの端末に保存されます</span>
+    <div class="spacer"></div>
+    <button class="btn btn-sm" id="btnExport">バックアップ保存</button>
+    <button class="btn btn-sm" id="btnImport">読み込み</button>
+    <input type="file" id="importFile" accept=".json" class="hidden">
+    <button class="btn btn-primary" id="btnNew">＋ 新規案件</button>
+  </header>
+  <div class="wrap">
+    <div class="toolbar">
+      <label>月で検索</label>
+      <input type="month" id="filterMonth">
+      <button class="btn btn-sm" id="btnClearMonth">解除</button>
+      <label>キーワード</label>
+      <input type="search" id="filterText" placeholder="案件名で絞り込み">
+      <div class="spacer"></div>
+      <span id="listCount" style="font-size:12px;color:#666;"></span>
+    </div>
+    <div id="projList"></div>
+  </div>
+  <div class="site-foot">
+    メモから工事のマスタースケジュール（工程表）を作成し、A3横でPDF出力できるツールです。登録不要・無料でお使いいただけます。<br>
+    入力内容はお使いのブラウザ内にのみ保存され、サーバーへ送信されることはありません。ブラウザのデータを消去すると失われるため、大切な案件は「バックアップ保存」でファイルに書き出してください。
+  </div>
+</div>
+
+<!-- ============ 編集画面 ============ -->
+<div id="editorView" class="hidden">
+  <header class="app-header">
+    <button class="btn btn-sm" id="btnBack">← 一覧へ</button>
+    <h1 id="edTitle">案件編集</h1>
+    <div class="spacer"></div>
+    <span class="savestat" id="saveStat"></span>
+    <select id="pageSize" class="btn btn-sm" title="用紙サイズ">
+      <option value="A3 landscape">A3 横</option>
+      <option value="A4 landscape">A4 横</option>
+    </select>
+    <button class="btn btn-primary" id="btnPrint">PDF出力（印刷）</button>
+  </header>
+
+  <div class="ed-wrap">
+    <div class="editor-forms">
+      <div class="grid2">
+        <div class="panel">
+          <h2>案件情報</h2>
+          <div class="field">
+            <label>案件名</label>
+            <input type="text" id="fName" placeholder="例：帝国ホテル">
+          </div>
+          <div class="field">
+            <label>スケジュール表タイトル</label>
+            <input type="text" id="fTitle" placeholder="例：帝国ホテル 全体スケジュール（叩き）">
+          </div>
+          <div class="hint">オープン日・引き渡し日・工事期間はメモから自動で読み取ります。表示期間も自動です（スケジュール開始月〜オープン月）。</div>
+        </div>
+
+        <div class="panel">
+          <h2>スケジュールメモ → 叩き生成</h2>
+          <div class="field">
+            <textarea id="fMemo" rows="8" placeholder="例：
+帝国ホテル 改装工事
+9/1 オープン
+8/15 引き渡し
+7月上旬 着工
+5月 内装協議・設計
+6月 図面チェック・着工前準備"></textarea>
+          </div>
+          <button class="btn btn-primary" id="btnGenerate">メモから叩きを生成</button>
+          <div class="hint">
+            「9/1 オープン」「8/15 引渡」「7月上旬 着工」「5月 内装協議」のように<b>日付＋内容</b>を1行ずつ書いてください。
+            オープン日だけでも、引渡し・着工・準備期間を逆算して叩きを作ります。生成後は下の表で自由に修正できます。
+          </div>
+          <div id="genWarn" class="warn hidden"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>スケジュールバー（カレンダー上の帯）</h2>
+        <div id="laneEditor"></div>
+        <button class="btn btn-sm" id="btnAddLane">＋ 行（レーン）を追加</button>
+        <div class="hint">「縦書き」はオープン日や引渡し日のような1日だけのマーカーに使います。開始日と終了日を同じ日にしてください。</div>
+      </div>
+    </div>
+
+    <div class="panel no-print" style="padding:10px 18px;">
+      <h2 style="margin-bottom:0;">プレビュー（この内容がそのままPDFになります）</h2>
+    </div>
+    <div id="printArea"><div id="pageWrap"><div id="pageInner"></div></div></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= データ ================= */
+const STORAGE_KEY = "master-schedule-projects-v1";
+const SETTINGS_KEY = "master-schedule-settings-v1";
+const COLORS = [
+  {v:"#FBE5D6", n:"オレンジ"},
+  {v:"#DEEBF7", n:"ブルー"},
+  {v:"#E2EFDA", n:"グリーン"},
+  {v:"#FFF2CC", n:"クリーム"},
+  {v:"#FCE4EC", n:"ピンク"},
+  {v:"#E4DFEC", n:"パープル"},
+  {v:"#FFFF00", n:"イエロー"},
+  {v:"#EDEDED", n:"グレー"},
+];
+const PERIOD_COLORS = ["#FBE5D6","#DEEBF7","#E2EFDA","#FFF2CC","#FCE4EC","#E4DFEC"];
+let projects = loadProjects();
+let current = null;
+let saveTimer = null;
+
+function loadProjects(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch(e){ return []; }
+}
+let storageWarned = false;
+function persist(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  }catch(e){
+    if(!storageWarned){
+      storageWarned = true;
+      const msg = String(e).indexOf("Quota") >= 0
+        ? "保存容量がいっぱいです。不要な案件を削除するか、「バックアップ保存」でファイルに書き出してください。"
+        : "このブラウザでは保存機能が使えません（プライベートモードなどの可能性があります）。作成した内容は「バックアップ保存」でファイルに書き出してください。";
+      const b = document.createElement("div");
+      b.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:200;background:#fdecea;color:#a3231b;border-top:1px solid #f2c3bf;padding:10px 16px;font-size:13px;";
+      b.textContent = "⚠ " + msg;
+      document.body.appendChild(b);
+    }
+  }
+}
+function loadSettings(){
+  try{ return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }
+  catch(e){ return {}; }
+}
+function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* ================= 日付ユーティリティ ================= */
+function pad(n){ return String(n).padStart(2,"0"); }
+function d2s(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function s2d(s){ const p=s.split("-").map(Number); return new Date(p[0],p[1]-1,p[2]); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+function monthKey(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1); }
+function monthAdd(ym, n){
+  const p=ym.split("-").map(Number);
+  const d=new Date(p[0], p[1]-1+n, 1);
+  return monthKey(d);
+}
+function monthDiff(a,b){ // b - a （月数）
+  const pa=a.split("-").map(Number), pb=b.split("-").map(Number);
+  return (pb[0]-pa[0])*12 + (pb[1]-pa[1]);
+}
+function junLabel(day){ return day<=10 ? "上旬" : day<=20 ? "中旬" : "下旬"; }
+function fmtMD(s){ const p=s.split("-").map(Number); return p[1]+"/"+p[2]; }
+function esc(s){
+  return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ================= メモ解析 → 叩き生成 ================= */
+function parseMemo(memo){
+  const events = [];
+  let nameGuess = "";
+  const lines = memo.split(/\r?\n/)
+    .map(l=>l.replace(/[（(][月火水木金土日祝][)）]/g,"")
+             .replace(/^[\s\-\u2013\u2014\u2015\u30fb*+\u25cf\u25cb\u25a0\u25a1\u25c6\u25b6>\uff1e]+/,"")
+             .trim())
+    .filter(l=>l && !/^[\u203b*\uff0a]/.test(l));
+  const fullDateRe = /(?:(\d{4})[\/年])?(\d{1,2})[\/月](\d{1,2})日?/;
+  const monthOnlyRe = /(?:(\d{4})年)?(\d{1,2})月(上旬|中旬|下旬)?/;
+
+  for(const line of lines){
+    const rangeM = line.match(/((?:\d{4}[\/年])?\d{1,2}[\/月]\d{1,2}日?)\s*[〜~～\-ー–—]\s*((?:\d{4}[\/年])?\d{1,2}[\/月]\d{1,2}日?)/);
+    const fullM = line.match(fullDateRe);
+    const monthM = line.match(monthOnlyRe);
+    let ev = null;
+    if(rangeM){
+      const a = rangeM[1].match(fullDateRe), b = rangeM[2].match(fullDateRe);
+      ev = {kind:"range",
+        y1:a[1]?+a[1]:null, m1:+a[2], d1:+a[3],
+        y2:b[1]?+b[1]:null, m2:+b[2], d2:+b[3],
+        text: line.replace(rangeM[0],"").trim()};
+    }else if(fullM){
+      ev = {kind:"date", y1:fullM[1]?+fullM[1]:null, m1:+fullM[2], d1:+fullM[3],
+        text: line.replace(fullM[0],"").trim()};
+    }else if(monthM && /月/.test(line)){
+      ev = {kind:"month", y1:monthM[1]?+monthM[1]:null, m1:+monthM[2], jun:monthM[3]||null,
+        text: line.replace(monthM[0],"").trim()};
+    }
+    if(ev){
+      ev.text = ev.text
+        .replace(/^[\s\-\u2013\u2014\u2015\u30fb:：、,]+/,"")
+        .replace(/[\s:：、,]+$/,"")
+        .trim();
+      const t = ev.text;
+      ev.cat =
+        (/(オープン|open|開業|開店)/i.test(t) && !/(準備|前日|直前|に向け)/.test(t)) ? "open" :
+        /(引き?渡し?|引渡)/.test(t) ? "handover" :
+        /(着工|施工開始|工事開始)/.test(t) ? "kickoff" :
+        /(竣工|完工)/.test(t) ? "completion" :
+        /(協議|設計|デザイン|説明会)/.test(t) ? "design" :
+        /(図面|着工前|準備|発注|申請|届出)/.test(t) ? "prep" : "other";
+      events.push(ev);
+    }else if(!nameGuess && !/^[\d\s\/:年月日〜~～\-]+$/.test(line)){
+      nameGuess = line;
+    }
+  }
+  return {events, nameGuess};
+}
+
+function resolveYears(events, today){
+  // OPENの年を確定 → 他イベントはOPEN以前・11ヶ月以内に収まる年を選ぶ
+  const open = events.find(e=>e.cat==="open");
+  let anchor = null;
+  if(open){
+    if(open.y1){ anchor = new Date(open.y1, open.m1-1, open.d1||1); }
+    else{
+      let y = today.getFullYear();
+      let d = new Date(y, open.m1-1, open.d1||1);
+      if(d < addDays(today,-30)) d = new Date(y+1, open.m1-1, open.d1||1);
+      anchor = d;
+    }
+    open.date1 = anchor;
+  }
+  const base = anchor || today;
+  for(const ev of events){
+    if(ev === open) continue;
+    const resolve = (yy,mm,dd)=>{
+      if(yy) return new Date(yy, mm-1, dd);
+      const cands = [base.getFullYear()-1, base.getFullYear(), base.getFullYear()+1]
+        .map(y=>new Date(y, mm-1, dd));
+      let best = cands[0], bestScore = Infinity;
+      for(const c of cands){
+        const diff = (base - c)/86400000; // 正＝OPENより前
+        let score;
+        if(anchor){ score = (diff>=-31 && diff<=340) ? Math.abs(diff-90) : 9999 + Math.abs(diff); }
+        else{ score = Math.abs(diff-60); }
+        if(score < bestScore){ bestScore=score; best=c; }
+      }
+      return best;
+    };
+    if(ev.kind==="range"){
+      ev.date1 = resolve(ev.y1, ev.m1, ev.d1);
+      ev.date2 = resolve(ev.y2, ev.m2, ev.d2);
+      if(ev.date2 < ev.date1) ev.date2 = new Date(ev.date1.getFullYear(), ev.m2-1, ev.d2);
+    }else if(ev.kind==="date"){
+      ev.date1 = resolve(ev.y1, ev.m1, ev.d1);
+    }else{ // month
+      const midDay = ev.jun==="上旬"?5 : ev.jun==="中旬"?15 : ev.jun==="下旬"?25 : 15;
+      ev.date1 = resolve(ev.y1, ev.m1, midDay);
+    }
+  }
+  return open ? open.date1 : null;
+}
+
+function generateFromMemo(memo){
+  const today = new Date();
+  const {events, nameGuess} = parseMemo(memo);
+  const warnings = [];
+  const openDate = resolveYears(events, today);
+
+  const evOpen = events.find(e=>e.cat==="open");
+  const evHand = events.find(e=>e.cat==="handover");
+  const evKick = events.find(e=>e.cat==="kickoff");
+  const evComp = events.find(e=>e.cat==="completion");
+
+  if(!evOpen) warnings.push("メモに「オープン」の日付が見つかりませんでした。見つかった日付だけで作成します。");
+
+  let open = openDate;
+  let handover = evHand ? evHand.date1 : null;
+
+  const bars = [];
+  const pushBar = (text,start,end,color,vertical)=>bars.push({id:uid(),text,start:d2s(start),end:d2s(end),color,vertical:!!vertical});
+  const monthLabel = d=> (d.getMonth()+1)+"月";
+
+  // メモが詳細（日付イベント4件以上 or 期間・個別予定あり）なら逆算補完せず、メモの内容だけで作る
+  const detailed = events.length >= 4 || events.some(e=>e.kind==="range" || ["other","completion"].includes(e.cat));
+
+  if(detailed){
+    let ci = 0;
+    const nextColor = ()=> PERIOD_COLORS[ci++ % PERIOD_COLORS.length];
+    for(const ev of events){
+      if(ev.cat==="open"){ pushBar("OPEN", ev.date1, ev.date1, "#FFFF00", true); continue; }
+      if(ev.cat==="kickoff" && ev.kind!=="range"
+         && !events.some(e=>e!==ev && e.kind==="range" && e.date1<=ev.date1 && ev.date1<=e.date2)){
+        // 工事期間バー：着工 → 引渡（無ければ竣工、それも無ければオープン前日）まで同色で塗りつぶし
+        let kStart = ev.date1;
+        if(ev.kind==="month" && ev.jun){
+          const y=ev.date1.getFullYear(), m=ev.date1.getMonth();
+          kStart = ev.jun==="上旬" ? new Date(y,m,1) : ev.jun==="中旬" ? new Date(y,m,11) : new Date(y,m,21);
+        }
+        const endEv = evHand || evComp;
+        let kEnd = endEv ? endEv.date1 : (evOpen ? addDays(evOpen.date1,-1) : addDays(kStart,9));
+        if(kEnd < kStart) kEnd = kStart;
+        pushBar("工事期間", kStart, kEnd, nextColor());
+        continue;
+      }
+      addCustomEvent(ev, bars, (ev.kind==="range"||ev.kind==="month") ? nextColor() : null);
+    }
+  }else{
+    // 逆算モード：オープン日などの基点から標準工程を補完
+    if(open && !handover) handover = addDays(open,-14);
+    if(open && handover && handover > open){ handover = addDays(open,-14); warnings.push("引き渡し日がオープン日より後だったため、オープン2週間前に調整しました。"); }
+    const kickoff = evKick ? evKick.date1 : (handover ? addDays(handover,-42) : null);
+    const evDesign = events.filter(e=>e.cat==="design");
+    const evPrep = events.filter(e=>e.cat==="prep");
+
+    // 設計・協議（メモ指定 or 着工2ヶ月前の月）
+    if(evDesign.length){
+      for(const ev of evDesign) addCustomEvent(ev, bars);
+    }else if(kickoff){
+      const m = new Date(kickoff.getFullYear(), kickoff.getMonth()-2, 1);
+      pushBar(monthLabel(m)+"\n内装協議・設計\nデザイナー・施工業者の確認", m, new Date(m.getFullYear(),m.getMonth()+1,0), "#FBE5D6");
+    }
+    // 図面チェック・着工前準備（メモ指定 or 着工前月）
+    if(evPrep.length){
+      for(const ev of evPrep) addCustomEvent(ev, bars);
+    }else if(kickoff){
+      const m = new Date(kickoff.getFullYear(), kickoff.getMonth()-1, 1);
+      pushBar(monthLabel(m)+"\n図面チェック\n着工前書類\n工事発注", m, new Date(m.getFullYear(),m.getMonth()+1,0), "#FBE5D6");
+    }
+    // 工事期間：着工 → 引渡まで同色で塗りつぶし
+    if(kickoff){
+      let kStart = kickoff;
+      if(evKick && evKick.kind==="month" && evKick.jun){
+        const y=kickoff.getFullYear(), m=kickoff.getMonth();
+        kStart = evKick.jun==="上旬" ? new Date(y,m,1) : evKick.jun==="中旬" ? new Date(y,m,11) : new Date(y,m,21);
+      }
+      let kEnd = handover && handover >= kStart ? handover : addDays(kStart,9);
+      pushBar("工事期間", kStart, kEnd, "#DEEBF7");
+    }
+    // 引き渡し・各種検査
+    if(handover) pushBar("引き渡し・各種検査", handover, handover, "#DEEBF7", true);
+    // オープン
+    if(open) pushBar("OPEN", open, open, "#FFFF00", true);
+  }
+
+  bars.sort((a,b)=> a.start < b.start ? -1 : 1);
+
+  if(!bars.length) warnings.push("日付を読み取れませんでした。メモの書き方を確認してください（例：9/1 オープン）。");
+
+  return {
+    name: nameGuess,
+    openDate: open? d2s(open):"", handoverDate: handover? d2s(handover):"",
+    lanes:[{id:uid(), label:"工事関係", bars}],
+    warnings
+  };
+}
+
+function addCustomEvent(ev, bars, periodColor){
+  const text = ev.text || "予定";
+  if(ev.kind==="month"){
+    const y=ev.date1.getFullYear(), m=ev.date1.getMonth();
+    let start,end;
+    if(ev.jun==="上旬"){ start=new Date(y,m,1); end=new Date(y,m,10); }
+    else if(ev.jun==="中旬"){ start=new Date(y,m,11); end=new Date(y,m,20); }
+    else if(ev.jun==="下旬"){ start=new Date(y,m,21); end=new Date(y,m+1,0); }
+    else{ start=new Date(y,m,1); end=new Date(y,m+1,0); }
+    bars.push({id:uid(), text:(m+1)+"月"+(ev.jun||"")+"\n"+text, start:d2s(start), end:d2s(end), color:periodColor||"#FBE5D6", vertical:false});
+  }else if(ev.kind==="range"){
+    bars.push({id:uid(), text, start:d2s(ev.date1), end:d2s(ev.date2), color:periodColor||"#DEEBF7", vertical:false});
+  }else{
+    const color = ev.cat==="handover" ? "#DEEBF7" : "#EDEDED";
+    bars.push({id:uid(), text, start:d2s(ev.date1), end:d2s(ev.date1), color, vertical:true});
+  }
+}
+
+/* ================= 一覧画面 ================= */
+const $ = s=>document.querySelector(s);
+
+function showList(){
+  current = null;
+  $("#editorView").classList.add("hidden");
+  $("#listView").classList.remove("hidden");
+  renderList();
+}
+
+function computeRange(p){
+  // バーのある最初の月 〜 オープン日の月（バーがその先まであればそこまで）
+  let minM=null, maxM=null;
+  const upd = ym => { if(!minM||ym<minM) minM=ym; if(!maxM||ym>maxM) maxM=ym; };
+  (p.lanes||[]).forEach(l=>(l.bars||[]).forEach(b=>{
+    if(b.start) upd(b.start.slice(0,7));
+    if(b.end) upd(b.end.slice(0,7));
+  }));
+  if(p.openDate) upd(p.openDate.slice(0,7));
+  if(!minM){ minM = maxM = monthKey(new Date()); }
+  return {startMonth:minM, monthCount:monthDiff(minM,maxM)+1};
+}
+function projectMonthRange(p){
+  const r = computeRange(p);
+  const arr=[];
+  for(let i=0;i<r.monthCount;i++) arr.push(monthAdd(r.startMonth,i));
+  return arr;
+}
+
+function renderList(){
+  const fm = $("#filterMonth").value;
+  const ft = $("#filterText").value.trim().toLowerCase();
+  let list = [...projects].sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||""));
+  if(fm){
+    list = list.filter(p=>{
+      if(projectMonthRange(p).includes(fm)) return true;
+      if((p.openDate||"").slice(0,7)===fm) return true;
+      if((p.handoverDate||"").slice(0,7)===fm) return true;
+      return false;
+    });
+  }
+  if(ft) list = list.filter(p=>(p.name||"").toLowerCase().includes(ft) || (p.title||"").toLowerCase().includes(ft));
+
+  $("#listCount").textContent = list.length + " 件";
+  const box = $("#projList");
+  if(!list.length){
+    if(!projects.length && !fm && !ft){
+      box.innerHTML = `<div class="intro">
+        <h2>工事スケジュールの叩き台を、メモから自動作成</h2>
+        <p>日付入りのメモを貼り付けるだけで、内装・店舗工事のマスタースケジュール（工程表）を作ります。
+        生成された叩きはその場で修正でき、A3横でそのままPDFにできます。</p>
+        <div class="intro-btns">
+          <button class="btn" id="btnSample">サンプルを読み込んで試す</button>
+          <button class="btn btn-primary" id="btnNew2">＋ 新規案件をつくる</button>
+        </div>
+        <p class="note">入力したデータはこの端末のブラウザ内にのみ保存されます（サーバーには送信されません）。
+        別の端末とは共有されないため、大切な案件は「バックアップ保存」でファイルに書き出してお使いください。</p>
+      </div>`;
+      $("#btnSample").addEventListener("click", loadSample);
+      $("#btnNew2").addEventListener("click", ()=>$("#btnNew").click());
+    }else{
+      box.innerHTML = `<div class="empty">該当する案件がありません。</div>`;
+    }
+    return;
+  }
+  let html = `<table class="proj-table"><thead><tr>
+    <th>案件名</th><th>オープン</th><th>引き渡し</th><th>表示期間</th><th>更新日時</th><th style="width:150px;">操作</th>
+  </tr></thead><tbody>`;
+  for(const p of list){
+    const r = computeRange(p);
+    const range = r.startMonth.replace("-","/") + "〜" + monthAdd(r.startMonth, r.monthCount-1).replace("-","/");
+    html += `<tr class="row" data-id="${p.id}">
+      <td class="proj-name">${esc(p.name||"（無題）")}</td>
+      <td>${p.openDate ? esc(p.openDate.replace(/-/g,"/")) : "-"}</td>
+      <td>${p.handoverDate ? esc(p.handoverDate.replace(/-/g,"/")) : "-"}</td>
+      <td>${range}</td>
+      <td>${p.updatedAt ? esc(p.updatedAt.slice(0,16).replace("T"," ")) : "-"}</td>
+      <td>
+        <button class="btn btn-sm" data-act="dup" data-id="${p.id}">複製</button>
+        <button class="btn btn-sm btn-danger" data-act="del" data-id="${p.id}">削除</button>
+      </td>
+    </tr>`;
+  }
+  html += "</tbody></table>";
+  box.innerHTML = html;
+}
+
+// 確認ダイアログの代わりの2段階クリック：1回目で警告表示、4秒以内の2回目で実行
+function armButton(btn, armedLabel){
+  if(btn.dataset.armed) return true;
+  btn.dataset.armed = "1";
+  const orig = btn.textContent;
+  btn.textContent = armedLabel;
+  setTimeout(()=>{
+    if(btn.isConnected && btn.dataset.armed){ delete btn.dataset.armed; btn.textContent = orig; }
+  }, 4000);
+  return false;
+}
+
+$("#projList").addEventListener("click", e=>{
+  const btn = e.target.closest("button[data-act]");
+  if(btn){
+    const p = projects.find(x=>x.id===btn.dataset.id);
+    if(!p) return;
+    if(btn.dataset.act==="del"){
+      if(armButton(btn, "本当に削除？")){
+        projects = projects.filter(x=>x.id!==p.id);
+        persist(); renderList();
+      }
+    }else if(btn.dataset.act==="dup"){
+      const copy = JSON.parse(JSON.stringify(p));
+      copy.id = uid(); copy.name = (p.name||"") + "のコピー";
+      copy.updatedAt = new Date().toISOString();
+      projects.push(copy); persist(); renderList();
+    }
+    return;
+  }
+  const row = e.target.closest("tr.row");
+  if(row) openProject(row.dataset.id);
+});
+$("#filterMonth").addEventListener("input", renderList);
+$("#filterText").addEventListener("input", renderList);
+$("#btnClearMonth").addEventListener("click", ()=>{ $("#filterMonth").value=""; renderList(); });
+
+const SAMPLE_MEMO = `店舗内装工事
+
+8月3日：物件内見・現地調査・採寸
+8月4日〜8月21日：レイアウト検討・基本図面作成
+8月24日：基本図面UP・内容確認
+8月25日〜8月28日：図面修正・実施設計
+8月31日〜9月11日：施工会社への見積依頼・見積期間
+9月14日〜9月18日：見積確認・金額調整・施工会社決定
+9月25日：工事契約・資材発注
+9月28日：着工
+9月28日〜11月6日：内装工事
+11月9日〜11月13日：竣工確認・各種検査・是正工事・清掃
+11月16日：引渡し
+11月17日〜11月26日：什器搬入・開店準備
+11月27日：OPEN`;
+
+function loadSample(){
+  const g = generateFromMemo(SAMPLE_MEMO);
+  const p = {
+    id:uid(), name:"サンプル店舗", title:"サンプル店舗 全体スケジュール（叩き）",
+    memo:SAMPLE_MEMO, openDate:g.openDate, handoverDate:g.handoverDate,
+    lanes:g.lanes, updatedAt:new Date().toISOString()
+  };
+  projects.push(p); persist();
+  openProject(p.id);
+}
+
+$("#btnNew").addEventListener("click", ()=>{
+  const p = {
+    id:uid(), name:"", title:"", memo:"", openDate:"", handoverDate:"",
+    milestones:[], lanes:[{id:uid(), label:"工事関係", bars:[]}],
+    updatedAt:new Date().toISOString()
+  };
+  projects.push(p); persist();
+  openProject(p.id);
+});
+
+$("#btnExport").addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify(projects,null,1)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "マスタースケジュール_バックアップ.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("#btnImport").addEventListener("click", ()=>$("#importFile").click());
+$("#importFile").addEventListener("change", e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const data = JSON.parse(r.result);
+      if(!Array.isArray(data)) throw new Error();
+      let added=0, updated=0;
+      for(const p of data){
+        const i = projects.findIndex(x=>x.id===p.id);
+        if(i>=0){ projects[i]=p; updated++; } else { projects.push(p); added++; }
+      }
+      persist(); renderList();
+      alert(`読み込みました（追加 ${added} 件 / 上書き ${updated} 件）`);
+    }catch(err){ alert("ファイルを読み込めませんでした。バックアップ保存したJSONファイルを選んでください。"); }
+    e.target.value="";
+  };
+  r.readAsText(f);
+});
+
+/* ================= 編集画面 ================= */
+function openProject(id){
+  current = projects.find(p=>p.id===id);
+  if(!current) return;
+  $("#listView").classList.add("hidden");
+  $("#editorView").classList.remove("hidden");
+  $("#genWarn").classList.add("hidden");
+  fillForms();
+  renderLaneEditor();
+  renderPreview();
+  window.scrollTo(0,0);
+}
+
+function fillForms(){
+  $("#fName").value = current.name||"";
+  $("#fTitle").value = current.title||"";
+  $("#fMemo").value = current.memo||"";
+  $("#edTitle").textContent = current.name ? current.name : "新規案件";
+}
+
+function markSaved(){
+  current.updatedAt = new Date().toISOString();
+  persist();
+  $("#saveStat").textContent = "保存済み " + new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
+}
+function touch(){
+  markSaved();
+  renderPreview();
+}
+
+["fName","fTitle","fMemo"].forEach(fid=>{
+  $("#"+fid).addEventListener("input", ()=>{
+    if(!current) return;
+    current.name = $("#fName").value;
+    current.title = $("#fTitle").value;
+    current.memo = $("#fMemo").value;
+    $("#edTitle").textContent = current.name || "新規案件";
+    touch();
+  });
+});
+
+$("#btnBack").addEventListener("click", showList);
+$("#btnPrint").addEventListener("click", ()=>window.print());
+
+const settings = loadSettings();
+if(settings.pageSize) $("#pageSize").value = settings.pageSize;
+applyPageSize();
+$("#pageSize").addEventListener("change", ()=>{
+  settings.pageSize = $("#pageSize").value;
+  saveSettings(settings);
+  applyPageSize();
+});
+function applyPageSize(){
+  const v = $("#pageSize").value;
+  $("#pageStyle").textContent = `@page { size: ${v}; margin: 8mm; }`;
+  // 印刷可能幅（用紙幅 - 余白16mm）を96dpiのpxに換算
+  const mm = v.indexOf("A3") === 0 ? 404 : 281;
+  document.documentElement.style.setProperty("--page-w", Math.round(mm / 25.4 * 96) + "px");
+  fitPreviewScale();
+}
+
+// プレビューを用紙の実寸比のまま画面幅に収める
+function fitPreviewScale(){
+  const inner = $("#pageInner"), wrap = $("#pageWrap"), area = $("#printArea");
+  if(!inner || !wrap || !area) return;
+  const pageW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--page-w")) || 1527;
+  const avail = area.clientWidth - 40;
+  const s = Math.min(1, avail / pageW);
+  inner.style.transform = "scale(" + s + ")";
+  wrap.style.height = Math.ceil(inner.getBoundingClientRect().height) + "px";
+}
+window.addEventListener("resize", fitPreviewScale);
+
+/* --- メモから生成 --- */
+$("#btnGenerate").addEventListener("click", e=>{
+  if(!current) return;
+  const memo = $("#fMemo").value.trim();
+  const w = $("#genWarn");
+  if(!memo){ w.textContent = "メモを入力してください。"; w.classList.remove("hidden"); return; }
+  const hasData = current.lanes.some(l=>l.bars.length);
+  if(hasData && !armButton(e.currentTarget, "もう一度押すと作り直します")) return;
+  delete e.currentTarget.dataset.armed;
+  e.currentTarget.textContent = "メモから叩きを生成";
+
+  current.memo = memo;
+  const g = generateFromMemo(memo);
+  if(g.name && !current.name){ current.name = g.name; $("#fName").value = g.name; }
+  if(!current.title) current.title = (current.name||"") + " 全体スケジュール（叩き）";
+  current.openDate = g.openDate || current.openDate;
+  current.handoverDate = g.handoverDate || current.handoverDate;
+  current.milestones = [];
+  current.lanes = g.lanes;
+
+  fillForms();
+  renderLaneEditor();
+  touch();
+
+  if(g.warnings.length){ w.textContent = g.warnings.join("\n"); w.classList.remove("hidden"); }
+  else w.classList.add("hidden");
+});
+
+/* --- レーン／バー編集 --- */
+function colorSelect(val){
+  let html = `<select data-k="color">`;
+  const known = COLORS.some(c=>c.v.toLowerCase()===String(val).toLowerCase());
+  for(const c of COLORS) html += `<option value="${c.v}" ${c.v.toLowerCase()===String(val).toLowerCase()?"selected":""}>${c.n}</option>`;
+  if(!known && val) html += `<option value="${esc(val)}" selected>カスタム</option>`;
+  html += "</select>";
+  return html;
+}
+function renderLaneEditor(){
+  const box = $("#laneEditor");
+  let html = "";
+  current.lanes.forEach((lane,li)=>{
+    html += `<div class="lane-box" data-li="${li}">
+      <div class="lane-head">
+        <label style="font-size:12px;color:#555;">行ラベル</label>
+        <input type="text" data-lk="label" value="${esc(lane.label)}">
+        <div class="spacer"></div>
+        <button class="btn btn-sm btn-danger" data-lact="del">行を削除</button>
+      </div>
+      <table class="ed-table">
+        <thead><tr>
+          <th>バーに表示する文字（改行可）</th><th style="width:135px;">開始日</th><th style="width:135px;">終了日</th>
+          <th style="width:110px;">色</th><th style="width:56px;">縦書き</th><th style="width:34px;"></th>
+        </tr></thead><tbody>`;
+    lane.bars.forEach((b,bi)=>{
+      html += `<tr data-bi="${bi}">
+        <td><textarea rows="2" data-k="text">${esc(b.text)}</textarea></td>
+        <td><input type="date" data-k="start" value="${esc(b.start)}"></td>
+        <td><input type="date" data-k="end" value="${esc(b.end)}"></td>
+        <td><div class="color-cell"><span class="color-swatch" style="background:${esc(b.color)}"></span>${colorSelect(b.color)}</div></td>
+        <td style="text-align:center;"><input type="checkbox" data-k="vertical" ${b.vertical?"checked":""}></td>
+        <td><div class="rowbtns"><button data-bdel="1" title="削除">✕</button></div></td>
+      </tr>`;
+    });
+    html += `</tbody></table>
+      <button class="btn btn-sm" data-lact="addbar" style="margin-top:6px;">＋ バーを追加</button>
+    </div>`;
+  });
+  box.innerHTML = html;
+}
+$("#laneEditor").addEventListener("input", e=>{
+  const laneBox = e.target.closest("[data-li]"); if(!laneBox) return;
+  const lane = current.lanes[+laneBox.dataset.li];
+  if(e.target.dataset.lk === "label"){ lane.label = e.target.value; touch(); return; }
+  const tr = e.target.closest("tr[data-bi]"); if(!tr) return;
+  const bar = lane.bars[+tr.dataset.bi];
+  const k = e.target.dataset.k;
+  if(k==="vertical") bar.vertical = e.target.checked;
+  else bar[k] = e.target.value;
+  if(k==="color") tr.querySelector(".color-swatch").style.background = e.target.value;
+  if(k==="start" && (!bar.end || bar.end < bar.start)){ bar.end = bar.start; tr.querySelector('[data-k=end]').value = bar.start; }
+  touch();
+});
+$("#laneEditor").addEventListener("click", e=>{
+  const btn = e.target.closest("button"); if(!btn) return;
+  const laneBox = btn.closest("[data-li]"); if(!laneBox) return;
+  const li = +laneBox.dataset.li;
+  const lane = current.lanes[li];
+  if(btn.dataset.lact==="del"){
+    if(current.lanes.length<=1) return;
+    if(!armButton(btn, "本当に削除？")) return;
+    current.lanes.splice(li,1);
+  }else if(btn.dataset.lact==="addbar"){
+    const base = computeRange(current).startMonth + "-01";
+    lane.bars.push({id:uid(), text:"新しい予定", start:base, end:base, color:"#DEEBF7", vertical:false});
+  }else if(btn.dataset.bdel){
+    const tr = btn.closest("tr[data-bi]");
+    lane.bars.splice(+tr.dataset.bi,1);
+  }else return;
+  renderLaneEditor(); touch();
+});
+$("#btnAddLane").addEventListener("click", ()=>{
+  current.lanes.push({id:uid(), label:"新しい行", bars:[]});
+  renderLaneEditor(); touch();
+});
+
+/* ================= プレビュー描画 ================= */
+function renderPreview(){
+  if(!current) return;
+  const p = current;
+  const title = p.title || ((p.name||"") + " 全体スケジュール（叩き）");
+  let html = `<div class="pv-title">${esc(title)}</div>`;
+
+  const r = computeRange(p);
+  const start = r.startMonth;
+  const count = r.monthCount;
+  const months = [];
+  for(let i=0;i<count;i++){
+    const ym = monthAdd(start,i).split("-").map(Number);
+    months.push({y:ym[0], m:ym[1]});
+  }
+  for(let i=0;i<months.length;i+=2){
+    html += renderBlockTable(months.slice(i,i+2), p.lanes);
+  }
+  $("#pageInner").innerHTML = html;
+  fitBarText();
+  fitPreviewScale();
+}
+
+function fitBarText(){
+  document.querySelectorAll("#printArea td.barcell").forEach(cell=>{
+    const el = cell.querySelector(".bar-in");
+    if(!el) return;
+    el.style.fontSize = "";
+    el.style.letterSpacing = "";
+    const vertical = cell.classList.contains("v");
+    let size = vertical ? 8.5 : 9.5;
+    const over = ()=> el.scrollWidth > cell.clientWidth+1 || el.scrollHeight > cell.clientHeight+1;
+    while(over() && size > 5){
+      size -= 0.5;
+      el.style.fontSize = size + "px";
+      if(vertical && size < 8) el.style.letterSpacing = "0px";
+    }
+  });
+}
+
+function renderBlockTable(blk, lanes){
+  const dayList = [];
+  for(const {y,m} of blk){
+    const n = daysInMonth(y,m);
+    for(let d=1; d<=n; d++){
+      const dt = new Date(y,m-1,d);
+      dayList.push({iso:d2s(dt), dow:dt.getDay(), d});
+    }
+  }
+  const total = dayList.length;
+  const single = blk.length===1 ? ` style="width:50%;min-width:525px;"` : "";
+  let html = `<div class="cal-block"><table class="cal"${single}><colgroup><col class="lblcol"><col span="${total}"></colgroup>`;
+  // 月
+  html += `<tr class="rw-month"><th class="lbl">月</th>`;
+  for(const {y,m} of blk){
+    html += `<th colspan="${daysInMonth(y,m)}" class="mh">${y}年${m}月</th>`;
+  }
+  html += `</tr>`;
+  // 曜日
+  html += `<tr class="rw-dow"><td class="lbl lbl-td">曜日</td>`;
+  for(const o of dayList){
+    const cls = o.dow===0?"sun":o.dow===6?"sat":"";
+    html += `<td class="${cls}">${"日月火水木金土"[o.dow]}</td>`;
+  }
+  html += `</tr>`;
+  // 日程
+  html += `<tr class="rw-day"><td class="lbl lbl-td">日程</td>`;
+  for(const o of dayList) html += `<td>${o.d}</td>`;
+  html += `</tr>`;
+  // レーン
+  for(const lane of lanes){
+    const bars = lane.bars.filter(b=>b.start && b.end).sort((a,b)=>a.start<b.start?-1:1);
+    const isMarked = iso => bars.some(b=>b.vertical && b.start<=iso && iso<=b.end);
+    // 1日マーカー（縦書き）を期間バーより優先し、期間バーはマーカー位置で分割する
+    const cells = [];
+    let i = 0;
+    while(i < total){
+      const iso = dayList[i].iso;
+      const bar = bars.find(b=>b.vertical && b.start<=iso && iso<=b.end)
+               || bars.find(b=>b.start<=iso && iso<=b.end);
+      if(!bar){ cells.push(null); i++; continue; }
+      let j = i+1;
+      if(bar.vertical){
+        while(j<total && dayList[j].iso<=bar.end) j++;
+      }else{
+        while(j<total && dayList[j].iso<=bar.end && !isMarked(dayList[j].iso)) j++;
+      }
+      cells.push({bar, span:j-i});
+      i = j;
+    }
+    // 分割された期間バーのテキストは一番広い区間にだけ表示
+    const widest = new Map();
+    cells.forEach((c,idx)=>{
+      if(c && !c.bar.vertical){
+        const w = widest.get(c.bar);
+        if(!w || c.span > w.span) widest.set(c.bar, {idx, span:c.span});
+      }
+    });
+    html += `<tr class="rw-lane"><th class="lbl">${esc(lane.label)}</th>`;
+    cells.forEach((c,idx)=>{
+      if(!c){ html += `<td></td>`; return; }
+      const showText = c.bar.vertical || widest.get(c.bar).idx === idx;
+      html += `<td colspan="${c.span}" class="barcell ${c.bar.vertical?"v":""}" style="background:${esc(c.bar.color)}"><div class="bar-in">${showText ? esc(c.bar.text).replace(/\n/g,"<br>") : ""}</div></td>`;
+    });
+    html += `</tr>`;
+  }
+  html += `</table></div>`;
+  return html;
+}
+
+/* .lbl-td 用の最小スタイルを補完 */
+const extra = document.createElement("style");
+extra.textContent = `.cal td.lbl-td{background:#fff;font-size:10px;font-weight:600;text-align:center;border:1px solid var(--line);}`;
+document.head.appendChild(extra);
+
+/* ================= 起動 ================= */
+showList();
+</script>
+</body>
+</html>
