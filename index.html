@@ -170,7 +170,13 @@ button[data-armed]{background:#b3261e !important; border-color:#b3261e !importan
   #editorView .ed-wrap{max-width:none; margin:0; padding:0;}
   #printArea{box-shadow:none; border-radius:0; padding:0; overflow:visible;}
   #pageWrap{height:auto !important; overflow:visible !important;}
-  #pageInner{transform:none !important; width:100% !important;}
+  #pageInner{
+    transform:none !important; width:100% !important;
+    /* 用紙の高さに対して上下中央に配置（1ページに収まる場合） */
+    display:flex; flex-direction:column; justify-content:center;
+    min-height:100vh;
+  }
+  .cal-block:last-child{margin-bottom:0;}
   .cal{min-width:0;}
   .cal-block{page-break-inside:avoid;}
 }
@@ -393,49 +399,62 @@ function parseMemo(memo){
   return {events, nameGuess};
 }
 
+function evDay(ev){
+  if(ev.kind === "month"){
+    return ev.jun==="上旬" ? 5 : ev.jun==="中旬" ? 15 : ev.jun==="下旬" ? 25 : 15;
+  }
+  return ev.d1;
+}
+function assignYear(ev, year){
+  ev.date1 = new Date(year, ev.m1-1, evDay(ev));
+  if(ev.kind === "range"){
+    let y2 = ev.y2 || year;
+    let d2 = new Date(y2, ev.m2-1, ev.d2);
+    if(d2 < ev.date1) d2 = new Date(y2+1, ev.m2-1, ev.d2);
+    ev.date2 = d2;
+  }
+}
+
+/* メモは基本的に日付順に書かれる前提で、
+   オープン日（無ければ先頭行）を基準に前後へ年を割り当てる。 */
 function resolveYears(events, today){
-  // OPENの年を確定 → 他イベントはOPEN以前・11ヶ月以内に収まる年を選ぶ
-  const open = events.find(e=>e.cat==="open");
-  let anchor = null;
-  if(open){
-    if(open.y1){ anchor = new Date(open.y1, open.m1-1, open.d1||1); }
-    else{
-      let y = today.getFullYear();
-      let d = new Date(y, open.m1-1, open.d1||1);
-      if(d < addDays(today,-30)) d = new Date(y+1, open.m1-1, open.d1||1);
-      anchor = d;
+  if(!events.length) return null;
+  const openIdx = events.findIndex(e=>e.cat==="open");
+  const anchorIdx = openIdx >= 0 ? openIdx : 0;
+  const a = events[anchorIdx];
+
+  if(a.y1){
+    assignYear(a, a.y1);
+  }else{
+    const y = today.getFullYear();
+    let best = y, bestScore = Infinity;
+    for(const yy of [y-1, y, y+1]){
+      const d = new Date(yy, a.m1-1, evDay(a));
+      const diff = (d - today) / 86400000;
+      const score = diff >= -31 ? diff : 1000000 + Math.abs(diff);
+      if(score < bestScore){ bestScore = score; best = yy; }
     }
-    open.date1 = anchor;
+    assignYear(a, best);
   }
-  const base = anchor || today;
-  for(const ev of events){
-    if(ev === open) continue;
-    const resolve = (yy,mm,dd)=>{
-      if(yy) return new Date(yy, mm-1, dd);
-      const cands = [base.getFullYear()-1, base.getFullYear(), base.getFullYear()+1]
-        .map(y=>new Date(y, mm-1, dd));
-      let best = cands[0], bestScore = Infinity;
-      for(const c of cands){
-        const diff = (base - c)/86400000; // 正＝OPENより前
-        let score;
-        if(anchor){ score = (diff>=-31 && diff<=340) ? Math.abs(diff-90) : 9999 + Math.abs(diff); }
-        else{ score = Math.abs(diff-60); }
-        if(score < bestScore){ bestScore=score; best=c; }
-      }
-      return best;
-    };
-    if(ev.kind==="range"){
-      ev.date1 = resolve(ev.y1, ev.m1, ev.d1);
-      ev.date2 = resolve(ev.y2, ev.m2, ev.d2);
-      if(ev.date2 < ev.date1) ev.date2 = new Date(ev.date1.getFullYear(), ev.m2-1, ev.d2);
-    }else if(ev.kind==="date"){
-      ev.date1 = resolve(ev.y1, ev.m1, ev.d1);
-    }else{ // month
-      const midDay = ev.jun==="上旬"?5 : ev.jun==="中旬"?15 : ev.jun==="下旬"?25 : 15;
-      ev.date1 = resolve(ev.y1, ev.m1, midDay);
-    }
+
+  // 基準より前の行：直後の予定を追い越さない最大の年
+  for(let i = anchorIdx - 1; i >= 0; i--){
+    const ev = events[i], nextD = events[i+1].date1;
+    if(ev.y1){ assignYear(ev, ev.y1); continue; }
+    let y = nextD.getFullYear(), guard = 0;
+    assignYear(ev, y);
+    while(ev.date1 > nextD && guard++ < 3){ assignYear(ev, --y); }
   }
-  return open ? open.date1 : null;
+  // 基準より後の行：直前の予定より前に戻らない最小の年
+  for(let i = anchorIdx + 1; i < events.length; i++){
+    const ev = events[i], prevD = events[i-1].date1;
+    if(ev.y1){ assignYear(ev, ev.y1); continue; }
+    let y = prevD.getFullYear(), guard = 0;
+    assignYear(ev, y);
+    while(ev.date1 < prevD && guard++ < 3){ assignYear(ev, ++y); }
+  }
+
+  return openIdx >= 0 ? events[openIdx].date1 : null;
 }
 
 function generateFromMemo(memo){
