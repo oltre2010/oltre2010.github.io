@@ -9,7 +9,7 @@
 <meta property="og:title" content="マスタースケジュール作成">
 <meta property="og:description" content="メモを貼るだけで工事の工程表を自動作成。A3横でPDF出力できます。登録不要・無料。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F3864'/%3E%3Crect x='12' y='18' width='40' height='6' rx='2' fill='%23FBE5D6'/%3E%3Crect x='12' y='29' width='28' height='6' rx='2' fill='%23DEEBF7'/%3E%3Crect x='12' y='40' width='34' height='6' rx='2' fill='%23E2EFDA'/%3E%3C/svg%3E">
-<style id="pageStyle">@page { size: A3 landscape; margin: 8mm; }</style>
+<style id="pageStyle">@page { size: 420mm 297mm; margin: 8mm; }</style>
 <style>
 :root{
   --navy:#1F3864; --blue:#2E75B6; --line:#9aa4b0; --line-light:#c9cfd6;
@@ -892,7 +892,9 @@ $("#pageSize").addEventListener("change", ()=>{
 });
 function applyPageSize(){
   const v = $("#pageSize").value;
-  $("#pageStyle").textContent = `@page { size: ${v}; margin: 8mm; }`;
+  // 用紙は寸法で指定する（landscapeキーワードだとiOSなどで縦用紙に回転して出力されるため）
+  const dim = v.indexOf("A3") === 0 ? "420mm 297mm" : "297mm 210mm";
+  $("#pageStyle").textContent = `@page { size: ${dim}; margin: 8mm; }`;
   // 印刷可能幅（用紙幅 - 余白16mm）を96dpiのpxに換算
   const mm = v.indexOf("A3") === 0 ? 404 : 281;
   document.documentElement.style.setProperty("--page-w", Math.round(mm / 25.4 * 96) + "px");
