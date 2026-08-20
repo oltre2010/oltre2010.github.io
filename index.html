@@ -13,6 +13,9 @@
 <style>
 :root{
   --navy:#1F3864; --blue:#2E75B6; --line:#9aa4b0; --line-light:#c9cfd6;
+  --ink:#111827; --muted:#5b6472; --faint:#8b94a1;
+  --border:#e3e7ec; --card:#ffffff;
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 6px 18px rgba(16,24,40,.06);
   --sat:#DCE6F1; --sun:#F8CBCB; --bg:#f0f2f5;
   --page-w:1527px;   /* A3横の印刷可能幅(420-16mm)を96dpi換算 */
   --lane-h:112px;
@@ -20,30 +23,57 @@
 *{box-sizing:border-box; margin:0; padding:0;}
 body{
   font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
-  background:var(--bg); color:#222; font-size:14px;
+  background:var(--bg); color:var(--ink); font-size:14px;
+  -webkit-font-smoothing:antialiased; line-height:1.7;
 }
 button{font-family:inherit; cursor:pointer;}
 input,select,textarea{font-family:inherit; font-size:13px;}
 
 /* ===== 共通 ===== */
 .app-header{
-  background:var(--navy); color:#fff; padding:10px 18px;
+  background:var(--navy); color:#fff; padding:13px 22px;
   display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:50;
+  box-shadow:0 2px 12px rgba(16,24,40,.16);
 }
 .app-header h1{font-size:16px; font-weight:700; flex:none; white-space:nowrap;
   max-width:38vw; overflow:hidden; text-overflow:ellipsis;}
 .app-header .spacer{flex:1;}
-.head-note{font-size:11px; color:#9db3d4; white-space:nowrap;}
+.head-note{font-size:11.5px; color:#a9bedd; white-space:nowrap; letter-spacing:.01em;}
 .btn{
-  border:1px solid #ccc; background:#fff; border-radius:6px; padding:7px 14px; font-size:13px;
+  border:1px solid #d3d9e0; background:#fff; border-radius:8px; padding:8px 15px; font-size:13px;
+  color:#374151; font-weight:500; line-height:1.4;
+  transition:background .13s, border-color .13s, transform .06s;
 }
-.btn:hover{background:#f3f6fa;}
-.btn-primary{background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600;}
-.btn-primary:hover{background:#255f96;}
-.btn-danger{color:#b3261e; border-color:#e2b4b1;}
-.btn-danger:hover{background:#fdf0ef;}
-button[data-armed]{background:#b3261e !important; border-color:#b3261e !important; color:#fff !important;}
-.btn-sm{padding:3px 9px; font-size:12px; border-radius:5px;}
+.btn:hover{background:#f7f9fb; border-color:#bcc5cf;}
+.btn:active{transform:translateY(1px);}
+.btn:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
+.btn-primary{background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600;
+  box-shadow:0 1px 2px rgba(46,117,182,.28);}
+.btn-primary:hover{background:#28689f; border-color:#28689f;}
+.btn-danger{color:#b3261e; border-color:#e6c3c0; background:#fff;}
+.btn-danger:hover{background:#fdf4f3; border-color:#d9a9a4;}
+
+/* ===== 確認ダイアログ ===== */
+.modal-back{
+  position:fixed; inset:0; z-index:300; background:rgba(23,29,38,.45);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  animation:mb-in .16s ease-out;
+}
+@keyframes mb-in{from{opacity:0}to{opacity:1}}
+.modal{
+  background:#fff; border-radius:14px; width:100%; max-width:420px;
+  box-shadow:0 18px 48px rgba(15,23,42,.24); padding:26px 26px 20px;
+  animation:m-in .18s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes m-in{from{opacity:0; transform:translateY(10px) scale(.98)}to{opacity:1; transform:none}}
+.modal h3{font-size:16.5px; color:#111827; margin-bottom:9px; letter-spacing:.01em;}
+.modal p{font-size:13.5px; color:#5b6472; line-height:1.85;}
+.modal p .em{color:#111827; font-weight:600;}
+.modal-btns{display:flex; justify-content:flex-end; gap:9px; margin-top:22px;}
+.modal-btns .btn{padding:9px 18px; font-size:13.5px;}
+.btn-solid-danger{background:#c0362c; border-color:#c0362c; color:#fff; font-weight:600;}
+.btn-solid-danger:hover{background:#a52c23;}
+.btn-sm{padding:5px 11px; font-size:12px; border-radius:7px;}
 .hidden{display:none !important;}
 
 /* ===== 一覧 ===== */
@@ -51,22 +81,31 @@ button[data-armed]{background:#b3261e !important; border-color:#b3261e !importan
 .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px;}
 .toolbar label{font-size:12px; color:#555;}
 .toolbar input[type=month], .toolbar input[type=search]{
-  border:1px solid #ccc; border-radius:6px; padding:6px 10px; background:#fff;
+  border:1px solid #d3d9e0; border-radius:8px; padding:7px 12px; background:#fff; color:var(--ink);
+  transition:border-color .13s, box-shadow .13s;
 }
+.toolbar input:focus{outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(46,117,182,.13);}
 .toolbar .spacer{flex:1;}
-.proj-table{width:100%; border-collapse:collapse; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); border-radius:8px; overflow:hidden;}
-.proj-table th{background:var(--navy); color:#fff; font-size:12px; padding:9px 12px; text-align:left; font-weight:600;}
-.proj-table td{padding:10px 12px; border-top:1px solid #eef0f3; font-size:13px; vertical-align:middle;}
-.proj-table tr.row:hover{background:#f5f8fc; cursor:pointer;}
-.proj-name{font-weight:700; color:var(--navy);}
-.empty{padding:48px; text-align:center; color:#888; background:#fff; border-radius:8px;}
-.intro{background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:32px 30px; text-align:center;}
-.intro h2{font-size:19px; color:var(--navy); margin-bottom:10px;}
-.intro p{font-size:13.5px; color:#555; line-height:1.9; max-width:620px; margin:0 auto;}
-.intro-btns{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:22px 0 20px;}
+.proj-table{width:100%; border-collapse:separate; border-spacing:0; background:var(--card);
+  box-shadow:var(--shadow); border-radius:12px; overflow:hidden; border:1px solid var(--border);}
+.proj-table th{background:#f7f9fb; color:var(--muted); font-size:11.5px; padding:12px 16px;
+  text-align:left; font-weight:600; letter-spacing:.04em; border-bottom:1px solid var(--border);}
+.proj-table td{padding:14px 16px; border-top:1px solid #eef1f4; font-size:13px; vertical-align:middle; color:var(--muted);}
+.proj-table tbody tr:first-child td{border-top:none;}
+.proj-table tr.row{cursor:pointer; transition:background .12s;}
+.proj-table tr.row:hover{background:#f8fafc;}
+.proj-name{font-weight:600; color:var(--ink); font-size:13.5px;}
+.empty{padding:56px 24px; text-align:center; color:var(--faint); background:var(--card);
+  border-radius:12px; border:1px solid var(--border); box-shadow:var(--shadow);}
+.intro{background:var(--card); border-radius:14px; box-shadow:var(--shadow); border:1px solid var(--border);
+  padding:52px 34px; text-align:center;}
+.intro h2{font-size:22px; color:var(--ink); margin-bottom:14px; letter-spacing:.01em; line-height:1.6;}
+.intro p{font-size:14px; color:var(--muted); line-height:2; max-width:620px; margin:0 auto;}
+.intro-btns{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:28px 0 24px;}
 .intro-btns .btn{padding:11px 22px; font-size:14px;}
-.intro .note{font-size:12px; color:#8a8f96; background:#f6f8fa; border-radius:8px; padding:12px 16px; margin-top:4px; text-align:left;}
-.site-foot{max-width:1000px; margin:8px auto 40px; padding:0 16px; font-size:11.5px; color:#98a0a8; line-height:1.9;}
+.intro .note{font-size:12px; color:var(--faint); background:#f7f9fb; border:1px solid #edf1f5;
+  border-radius:10px; padding:14px 18px; margin:4px auto 0; text-align:left; max-width:620px; line-height:1.9;}
+.site-foot{max-width:1000px; margin:20px auto 48px; padding:0 16px; font-size:11.5px; color:var(--faint); line-height:2;}
 
 @media(max-width:760px){
   .app-header{flex-wrap:wrap; gap:8px; padding:10px 12px;}
@@ -86,32 +125,44 @@ button[data-armed]{background:#b3261e !important; border-color:#b3261e !importan
 
 /* ===== 編集画面 ===== */
 #editorView .ed-wrap{max-width:1400px; margin:18px auto; padding:0 16px 60px;}
-.panel{background:#fff; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:16px 18px; margin-bottom:16px;}
-.panel h2{font-size:14px; color:var(--navy); border-left:4px solid var(--blue); padding-left:8px; margin-bottom:12px;}
+.panel{background:var(--card); border-radius:12px; box-shadow:var(--shadow); border:1px solid var(--border);
+  padding:20px 22px; margin-bottom:18px;}
+.panel h2{font-size:13.5px; color:var(--ink); font-weight:700; letter-spacing:.02em;
+  border-left:3px solid var(--blue); padding-left:10px; margin-bottom:16px;}
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
 @media(max-width:900px){.grid2{grid-template-columns:1fr;}}
 .field{margin-bottom:10px;}
 .field label{display:block; font-size:12px; color:#555; margin-bottom:3px;}
 .field input[type=text], .field input[type=date], .field input[type=month], .field input[type=number], .field textarea, .field select{
-  width:100%; border:1px solid #ccc; border-radius:6px; padding:7px 10px; background:#fff;
+  width:100%; border:1px solid #d3d9e0; border-radius:8px; padding:9px 12px; background:#fff; color:var(--ink);
+  transition:border-color .13s, box-shadow .13s;
 }
+.field input:focus, .field textarea:focus{
+  outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(46,117,182,.13);
+}
+.field label{color:var(--faint); font-weight:500; letter-spacing:.02em;}
 .field textarea{resize:vertical;}
 .inline-fields{display:flex; gap:12px; flex-wrap:wrap;}
 .inline-fields .field{flex:1; min-width:130px;}
-.hint{font-size:11.5px; color:#888; margin-top:6px; line-height:1.6;}
+.hint{font-size:11.5px; color:var(--faint); margin-top:8px; line-height:1.85;}
 .warn{font-size:12px; color:#a15c00; background:#fff7e8; border:1px solid #f0d9a8; border-radius:6px; padding:8px 10px; margin-top:8px; white-space:pre-line;}
 
 .ed-table{width:100%; border-collapse:collapse;}
 .ed-table th{font-size:11px; color:#666; text-align:left; padding:4px 6px; font-weight:600;}
 .ed-table td{padding:3px 4px; vertical-align:top;}
 .ed-table input[type=text], .ed-table input[type=date], .ed-table textarea, .ed-table select{
-  width:100%; border:1px solid #d5d9de; border-radius:5px; padding:5px 7px;
+  width:100%; border:1px solid #d9dee4; border-radius:7px; padding:7px 9px; color:var(--ink);
+  transition:border-color .13s, box-shadow .13s;
+}
+.ed-table input:focus, .ed-table textarea:focus, .ed-table select:focus{
+  outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(46,117,182,.12);
 }
 .ed-table textarea{resize:vertical; min-height:34px;}
 .rowbtns{display:flex; gap:3px;}
-.rowbtns button{border:1px solid #d5d9de; background:#fff; border-radius:4px; width:24px; height:24px; font-size:12px; line-height:1;}
-.rowbtns button:hover{background:#eef2f7;}
-.lane-box{border:1px solid #e2e6ea; border-radius:8px; padding:12px; margin-bottom:12px;}
+.rowbtns button{border:1px solid #d9dee4; background:#fff; border-radius:6px; width:27px; height:27px;
+  font-size:12px; line-height:1; color:var(--muted); transition:background .12s, color .12s, border-color .12s;}
+.rowbtns button:hover{background:#fdf4f3; color:#b3261e; border-color:#e6c3c0;}
+.lane-box{border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:14px; background:#fcfdfe;}
 .lane-head{display:flex; gap:10px; align-items:center; margin-bottom:8px;}
 .lane-head input{border:1px solid #d5d9de; border-radius:5px; padding:5px 8px; width:200px;}
 .lane-head .spacer{flex:1;}
@@ -656,25 +707,53 @@ function renderList(){
   box.innerHTML = html;
 }
 
-// 確認ダイアログの代わりの2段階クリック：1回目で警告表示、4秒以内の2回目で実行
-function armButton(btn, armedLabel){
-  if(btn.dataset.armed) return true;
-  btn.dataset.armed = "1";
-  const orig = btn.textContent;
-  btn.textContent = armedLabel;
-  setTimeout(()=>{
-    if(btn.isConnected && btn.dataset.armed){ delete btn.dataset.armed; btn.textContent = orig; }
-  }, 4000);
-  return false;
+/* 確認ダイアログ（ブラウザ標準のconfirmは環境により無効化されるため自前で用意） */
+function confirmDialog(opt){
+  return new Promise(resolve=>{
+    const back = document.createElement("div");
+    back.className = "modal-back";
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+      <h3>${esc(opt.title)}</h3>
+      <p>${opt.message}</p>
+      <div class="modal-btns">
+        <button class="btn" data-a="cancel">キャンセル</button>
+        <button class="btn ${opt.danger === false ? "btn-primary" : "btn-solid-danger"}" data-a="ok">${esc(opt.ok || "削除する")}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(back);
+    const prev = document.activeElement;
+    const close = v => {
+      document.removeEventListener("keydown", onKey);
+      back.remove();
+      if(prev && prev.focus) prev.focus();
+      resolve(v);
+    };
+    const onKey = e => {
+      if(e.key === "Escape") close(false);
+      if(e.key === "Enter") close(true);
+    };
+    document.addEventListener("keydown", onKey);
+    back.addEventListener("click", e=>{
+      if(e.target === back) return close(false);
+      const b = e.target.closest("button[data-a]");
+      if(b) close(b.dataset.a === "ok");
+    });
+    setTimeout(()=>{ const b = back.querySelector('[data-a="ok"]'); if(b) b.focus(); }, 30);
+  });
 }
 
-$("#projList").addEventListener("click", e=>{
+$("#projList").addEventListener("click", async e=>{
   const btn = e.target.closest("button[data-act]");
   if(btn){
     const p = projects.find(x=>x.id===btn.dataset.id);
     if(!p) return;
     if(btn.dataset.act==="del"){
-      if(armButton(btn, "本当に削除？")){
+      const ok = await confirmDialog({
+        title: "この案件を削除しますか？",
+        message: `<span class="em">${esc(p.name||"（無題）")}</span> を削除します。<br>この操作は取り消せません。`,
+        ok: "削除する"
+      });
+      if(ok){
         projects = projects.filter(x=>x.id!==p.id);
         persist(); renderList();
       }
@@ -833,15 +912,19 @@ function fitPreviewScale(){
 window.addEventListener("resize", fitPreviewScale);
 
 /* --- メモから生成 --- */
-$("#btnGenerate").addEventListener("click", e=>{
+$("#btnGenerate").addEventListener("click", async e=>{
   if(!current) return;
   const memo = $("#fMemo").value.trim();
   const w = $("#genWarn");
   if(!memo){ w.textContent = "メモを入力してください。"; w.classList.remove("hidden"); return; }
-  const hasData = current.lanes.some(l=>l.bars.length);
-  if(hasData && !armButton(e.currentTarget, "もう一度押すと作り直します")) return;
-  delete e.currentTarget.dataset.armed;
-  e.currentTarget.textContent = "メモから叩きを生成";
+  if(current.lanes.some(l=>l.bars.length)){
+    const ok = await confirmDialog({
+      title: "叩きを作り直しますか？",
+      message: "現在のスケジュールバーを破棄して、メモの内容から作り直します。<br>手作業で加えた修正は失われます。",
+      ok: "作り直す", danger: false
+    });
+    if(!ok) return;
+  }
 
   current.memo = memo;
   const g = generateFromMemo(memo);
@@ -914,14 +997,19 @@ $("#laneEditor").addEventListener("input", e=>{
   if(k==="start" && (!bar.end || bar.end < bar.start)){ bar.end = bar.start; tr.querySelector('[data-k=end]').value = bar.start; }
   touch();
 });
-$("#laneEditor").addEventListener("click", e=>{
+$("#laneEditor").addEventListener("click", async e=>{
   const btn = e.target.closest("button"); if(!btn) return;
   const laneBox = btn.closest("[data-li]"); if(!laneBox) return;
   const li = +laneBox.dataset.li;
   const lane = current.lanes[li];
   if(btn.dataset.lact==="del"){
     if(current.lanes.length<=1) return;
-    if(!armButton(btn, "本当に削除？")) return;
+    const ok = await confirmDialog({
+      title: "この行を削除しますか？",
+      message: `<span class="em">${esc(lane.label||"（無題）")}</span> の行と、その中の予定をすべて削除します。`,
+      ok: "削除する"
+    });
+    if(!ok) return;
     current.lanes.splice(li,1);
   }else if(btn.dataset.lact==="addbar"){
     const base = computeRange(current).startMonth + "-01";
