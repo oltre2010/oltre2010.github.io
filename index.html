@@ -630,17 +630,37 @@ function showList(){
   renderList();
 }
 
-function computeRange(p){
-  // バーのある最初の月 〜 オープン日の月（バーがその先まであればそこまで）
-  let minM=null, maxM=null;
-  const upd = ym => { if(!minM||ym<minM) minM=ym; if(!maxM||ym>maxM) maxM=ym; };
+/* 予定が入っている実際の日付範囲を返す（予定のない月・日は表示しない） */
+function computeSpan(p){
+  let min=null, max=null;
   (p.lanes||[]).forEach(l=>(l.bars||[]).forEach(b=>{
-    if(b.start) upd(b.start.slice(0,7));
-    if(b.end) upd(b.end.slice(0,7));
+    if(!b.start || !b.end) return;
+    const s = b.start < b.end ? b.start : b.end;
+    const e = b.start < b.end ? b.end : b.start;
+    if(!min || s < min) min = s;
+    if(!max || e > max) max = e;
   }));
-  if(p.openDate) upd(p.openDate.slice(0,7));
-  if(!minM){ minM = maxM = monthKey(new Date()); }
-  return {startMonth:minM, monthCount:monthDiff(minM,maxM)+1};
+  if(!min){ const t = d2s(new Date()); min = max = t; }
+  return {start:min, end:max};
+}
+/* 表示する月の区切り（端の月は該当する日だけ） */
+function monthSegments(p){
+  const sp = computeSpan(p);
+  const s = s2d(sp.start), e = s2d(sp.end);
+  const segs = [];
+  let y = s.getFullYear(), m = s.getMonth() + 1;
+  while(y < e.getFullYear() || (y === e.getFullYear() && m <= e.getMonth() + 1)){
+    const from = (y === s.getFullYear() && m === s.getMonth() + 1) ? s.getDate() : 1;
+    const to   = (y === e.getFullYear() && m === e.getMonth() + 1) ? e.getDate() : daysInMonth(y, m);
+    segs.push({y, m, from, to});
+    m++; if(m > 12){ m = 1; y++; }
+  }
+  return segs;
+}
+function computeRange(p){
+  const sp = computeSpan(p);
+  const a = sp.start.slice(0,7), b = sp.end.slice(0,7);
+  return {startMonth:a, monthCount:monthDiff(a,b)+1};
 }
 function projectMonthRange(p){
   const r = computeRange(p);
@@ -1034,14 +1054,7 @@ function renderPreview(){
   const title = p.title || ((p.name||"") + " 全体スケジュール（叩き）");
   let html = `<div class="pv-title">${esc(title)}</div>`;
 
-  const r = computeRange(p);
-  const start = r.startMonth;
-  const count = r.monthCount;
-  const months = [];
-  for(let i=0;i<count;i++){
-    const ym = monthAdd(start,i).split("-").map(Number);
-    months.push({y:ym[0], m:ym[1]});
-  }
+  const months = monthSegments(p);
   for(let i=0;i<months.length;i+=2){
     html += renderBlockTable(months.slice(i,i+2), p.lanes);
   }
@@ -1069,10 +1082,9 @@ function fitBarText(){
 
 function renderBlockTable(blk, lanes){
   const dayList = [];
-  for(const {y,m} of blk){
-    const n = daysInMonth(y,m);
-    for(let d=1; d<=n; d++){
-      const dt = new Date(y,m-1,d);
+  for(const seg of blk){
+    for(let d=seg.from; d<=seg.to; d++){
+      const dt = new Date(seg.y, seg.m-1, d);
       dayList.push({iso:d2s(dt), dow:dt.getDay(), d});
     }
   }
@@ -1081,8 +1093,8 @@ function renderBlockTable(blk, lanes){
   let html = `<div class="cal-block"><table class="cal"${single}><colgroup><col class="lblcol"><col span="${total}"></colgroup>`;
   // 月
   html += `<tr class="rw-month"><th class="lbl">月</th>`;
-  for(const {y,m} of blk){
-    html += `<th colspan="${daysInMonth(y,m)}" class="mh">${y}年${m}月</th>`;
+  for(const seg of blk){
+    html += `<th colspan="${seg.to - seg.from + 1}" class="mh">${seg.y}年${seg.m}月</th>`;
   }
   html += `</tr>`;
   // 曜日
