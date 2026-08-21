@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>マスタースケジュール作成 | 工事スケジュールをメモから自動作成</title>
-<meta name="description" content="日付入りのメモを貼り付けるだけで、内装・店舗工事のマスタースケジュール（工程表）を自動作成。A3横でPDF出力できます。登録不要・無料。">
+<meta name="description" content="日付入りのメモを貼り付けるだけで、内装・店舗工事のマスタースケジュール（工程表）を自動作成。A3横でPDF出力できます。登録不要・無料・データは保存されません。">
 <meta property="og:type" content="website">
 <meta property="og:title" content="マスタースケジュール作成">
 <meta property="og:description" content="メモを貼るだけで工事の工程表を自動作成。A3横でPDF出力できます。登録不要・無料。">
@@ -177,10 +177,10 @@ input,select,textarea{font-family:inherit; font-size:13px;}
   padding:20px; overflow:hidden;
 }
 #pageWrap{overflow:hidden;}
-#pageInner{width:var(--page-w); transform-origin:top left;}
+#pageInner{width:var(--page-w); transform-origin:top left; -webkit-font-smoothing:auto;}
 .pv-title{
   width:640px; max-width:100%; margin:0 auto 26px;
-  background:var(--navy); color:#fff; text-align:center; font-size:16px; font-weight:700; padding:8px 6px;
+  background:var(--navy); color:#fff; text-align:center; font-size:18px; font-weight:700; padding:10px 6px;
   border:1.5px solid var(--navy);
 }
 
@@ -189,27 +189,28 @@ input,select,textarea{font-family:inherit; font-size:13px;}
 .cal col.lblcol{width:74px;}
 .cal th,.cal td{border:1px solid var(--line-light); overflow:hidden;}
 .cal .lbl{
-  background:#fff; font-size:10px; font-weight:600; color:#333; text-align:center;
+  background:#fff; font-size:12px; font-weight:700; color:#111827; text-align:center;
   border:1px solid var(--line);
 }
-.cal .rw-month th.mh{font-size:12px; font-weight:700; padding:3px 0; text-align:center; border:1px solid var(--line); background:#fff;}
+.cal .rw-month th.mh{font-size:14px; font-weight:700; color:#111827; padding:5px 0; text-align:center; border:1px solid var(--line); background:#fff;}
 .cal .rw-dow td, .cal .rw-day td{
-  font-size:7.5px; text-align:center; padding:2px 0; color:#333; background:#fff;
+  font-size:var(--day-fs, 9.5px); font-weight:600; text-align:center;
+  padding:3px 0; color:#1f2937; background:#fff;
 }
 .cal .rw-dow td.sat{background:var(--sat);}
 .cal .rw-dow td.sun{background:var(--sun);}
 .cal .rw-lane{height:var(--lane-h);}
 .cal .rw-lane td{background:#fff;}
-.cal .rw-lane th.lbl{font-size:10.5px;}
+.cal .rw-lane th.lbl{font-size:12px;}
 .cal td.barcell{vertical-align:middle; padding:0;}
 .cal .bar-in{
-  font-size:9.5px; line-height:1.45; text-align:center;
+  font-size:11.5px; font-weight:600; color:#111827; line-height:1.45; text-align:center;
   white-space:normal; overflow-wrap:anywhere; word-break:break-word;
   overflow:hidden; padding:2px 2px;
 }
 .cal td.barcell.v .bar-in{
   writing-mode:vertical-rl; text-orientation:upright; white-space:normal;
-  margin:0 auto; max-height:calc(var(--lane-h) - 10px); letter-spacing:1px; font-size:8.5px; padding:2px 0;
+  margin:0 auto; max-height:calc(var(--lane-h) - 10px); letter-spacing:.5px; font-size:10.5px; padding:2px 0;
 }
 
 /* ===== 印刷 ===== */
@@ -235,42 +236,12 @@ input,select,textarea{font-family:inherit; font-size:13px;}
 </head>
 <body>
 
-<!-- ============ 一覧画面 ============ -->
-<div id="listView">
+<div id="editorView">
   <header class="app-header">
     <h1>マスタースケジュール作成</h1>
-    <span class="head-note">データはこの端末に保存されます</span>
     <div class="spacer"></div>
-    <button class="btn btn-sm" id="btnExport">バックアップ保存</button>
-    <button class="btn btn-sm" id="btnImport">読み込み</button>
-    <input type="file" id="importFile" accept=".json" class="hidden">
-    <button class="btn btn-primary" id="btnNew">＋ 新規案件</button>
-  </header>
-  <div class="wrap">
-    <div class="toolbar">
-      <label>月で検索</label>
-      <input type="month" id="filterMonth">
-      <button class="btn btn-sm" id="btnClearMonth">解除</button>
-      <label>キーワード</label>
-      <input type="search" id="filterText" placeholder="案件名で絞り込み">
-      <div class="spacer"></div>
-      <span id="listCount" style="font-size:12px;color:#666;"></span>
-    </div>
-    <div id="projList"></div>
-  </div>
-  <div class="site-foot">
-    メモから工事のマスタースケジュール（工程表）を作成し、A3横でPDF出力できるツールです。登録不要・無料でお使いいただけます。<br>
-    入力内容はお使いのブラウザ内にのみ保存され、サーバーへ送信されることはありません。ブラウザのデータを消去すると失われるため、大切な案件は「バックアップ保存」でファイルに書き出してください。
-  </div>
-</div>
-
-<!-- ============ 編集画面 ============ -->
-<div id="editorView" class="hidden">
-  <header class="app-header">
-    <button class="btn btn-sm" id="btnBack">← 一覧へ</button>
-    <h1 id="edTitle">案件編集</h1>
-    <div class="spacer"></div>
-    <span class="savestat" id="saveStat"></span>
+    <button class="btn btn-sm" id="btnSample">サンプル</button>
+    <button class="btn btn-sm" id="btnClear">新しく作る</button>
     <select id="pageSize" class="btn btn-sm" title="用紙サイズ">
       <option value="A3 landscape">A3 横</option>
       <option value="A4 landscape">A4 横</option>
@@ -291,7 +262,7 @@ input,select,textarea{font-family:inherit; font-size:13px;}
             <label>スケジュール表タイトル</label>
             <input type="text" id="fTitle" placeholder="例：帝国ホテル 全体スケジュール（叩き）">
           </div>
-          <div class="hint">オープン日・引き渡し日・工事期間はメモから自動で読み取ります。表示期間も自動です（スケジュール開始月〜オープン月）。</div>
+          <div class="hint">オープン日・引き渡し日・工事期間はメモから自動で読み取ります。表示期間も、予定が入っている期間だけが自動で表示されます。</div>
         </div>
 
         <div class="panel">
@@ -322,17 +293,21 @@ input,select,textarea{font-family:inherit; font-size:13px;}
       </div>
     </div>
 
-    <div class="panel no-print" style="padding:10px 18px;">
+    <div class="panel no-print" style="padding:14px 20px;">
       <h2 style="margin-bottom:0;">プレビュー（この内容がそのままPDFになります）</h2>
     </div>
     <div id="printArea"><div id="pageWrap"><div id="pageInner"></div></div></div>
+
+    <div class="site-foot no-print">
+      メモから工事のマスタースケジュール（工程表）を作成し、A3横でPDF出力できるツールです。登録不要・無料でお使いいただけます。<br>
+      入力内容はサーバーに送信されず、保存もされません。ページを閉じると内容は消えるため、必要な工程表はその場でPDFに出力してください。
+    </div>
   </div>
 </div>
 
 <script>
 "use strict";
 /* ================= データ ================= */
-const STORAGE_KEY = "master-schedule-projects-v1";
 const SETTINGS_KEY = "master-schedule-settings-v1";
 const COLORS = [
   {v:"#FBE5D6", n:"オレンジ"},
@@ -345,36 +320,12 @@ const COLORS = [
   {v:"#EDEDED", n:"グレー"},
 ];
 const PERIOD_COLORS = ["#FBE5D6","#DEEBF7","#E2EFDA","#FFF2CC","#FCE4EC","#E4DFEC"];
-let projects = loadProjects();
 let current = null;
-let saveTimer = null;
-
-function loadProjects(){
-  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch(e){ return []; }
-}
-let storageWarned = false;
-function persist(){
-  try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-  }catch(e){
-    if(!storageWarned){
-      storageWarned = true;
-      const msg = String(e).indexOf("Quota") >= 0
-        ? "保存容量がいっぱいです。不要な案件を削除するか、「バックアップ保存」でファイルに書き出してください。"
-        : "このブラウザでは保存機能が使えません（プライベートモードなどの可能性があります）。作成した内容は「バックアップ保存」でファイルに書き出してください。";
-      const b = document.createElement("div");
-      b.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:200;background:#fdecea;color:#a3231b;border-top:1px solid #f2c3bf;padding:10px 16px;font-size:13px;";
-      b.textContent = "⚠ " + msg;
-      document.body.appendChild(b);
-    }
-  }
-}
 function loadSettings(){
   try{ return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }
   catch(e){ return {}; }
 }
-function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+function saveSettings(s){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }catch(e){} }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
 /* ================= 日付ユーティリティ ================= */
@@ -620,17 +571,9 @@ function addCustomEvent(ev, bars, periodColor){
   }
 }
 
-/* ================= 一覧画面 ================= */
+/* ================= 共通 ================= */
 const $ = s=>document.querySelector(s);
 
-function showList(){
-  current = null;
-  $("#editorView").classList.add("hidden");
-  $("#listView").classList.remove("hidden");
-  renderList();
-}
-
-/* 予定が入っている実際の日付範囲を返す（予定のない月・日は表示しない） */
 function computeSpan(p){
   let min=null, max=null;
   (p.lanes||[]).forEach(l=>(l.bars||[]).forEach(b=>{
@@ -661,70 +604,6 @@ function computeRange(p){
   const sp = computeSpan(p);
   const a = sp.start.slice(0,7), b = sp.end.slice(0,7);
   return {startMonth:a, monthCount:monthDiff(a,b)+1};
-}
-function projectMonthRange(p){
-  const r = computeRange(p);
-  const arr=[];
-  for(let i=0;i<r.monthCount;i++) arr.push(monthAdd(r.startMonth,i));
-  return arr;
-}
-
-function renderList(){
-  const fm = $("#filterMonth").value;
-  const ft = $("#filterText").value.trim().toLowerCase();
-  let list = [...projects].sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||""));
-  if(fm){
-    list = list.filter(p=>{
-      if(projectMonthRange(p).includes(fm)) return true;
-      if((p.openDate||"").slice(0,7)===fm) return true;
-      if((p.handoverDate||"").slice(0,7)===fm) return true;
-      return false;
-    });
-  }
-  if(ft) list = list.filter(p=>(p.name||"").toLowerCase().includes(ft) || (p.title||"").toLowerCase().includes(ft));
-
-  $("#listCount").textContent = list.length + " 件";
-  const box = $("#projList");
-  if(!list.length){
-    if(!projects.length && !fm && !ft){
-      box.innerHTML = `<div class="intro">
-        <h2>工事スケジュールの叩き台を、メモから自動作成</h2>
-        <p>日付入りのメモを貼り付けるだけで、内装・店舗工事のマスタースケジュール（工程表）を作ります。
-        生成された叩きはその場で修正でき、A3横でそのままPDFにできます。</p>
-        <div class="intro-btns">
-          <button class="btn" id="btnSample">サンプルを読み込んで試す</button>
-          <button class="btn btn-primary" id="btnNew2">＋ 新規案件をつくる</button>
-        </div>
-        <p class="note">入力したデータはこの端末のブラウザ内にのみ保存されます（サーバーには送信されません）。
-        別の端末とは共有されないため、大切な案件は「バックアップ保存」でファイルに書き出してお使いください。</p>
-      </div>`;
-      $("#btnSample").addEventListener("click", loadSample);
-      $("#btnNew2").addEventListener("click", ()=>$("#btnNew").click());
-    }else{
-      box.innerHTML = `<div class="empty">該当する案件がありません。</div>`;
-    }
-    return;
-  }
-  let html = `<table class="proj-table"><thead><tr>
-    <th>案件名</th><th>オープン</th><th>引き渡し</th><th>表示期間</th><th>更新日時</th><th style="width:150px;">操作</th>
-  </tr></thead><tbody>`;
-  for(const p of list){
-    const r = computeRange(p);
-    const range = r.startMonth.replace("-","/") + "〜" + monthAdd(r.startMonth, r.monthCount-1).replace("-","/");
-    html += `<tr class="row" data-id="${p.id}">
-      <td class="proj-name">${esc(p.name||"（無題）")}</td>
-      <td>${p.openDate ? esc(p.openDate.replace(/-/g,"/")) : "-"}</td>
-      <td>${p.handoverDate ? esc(p.handoverDate.replace(/-/g,"/")) : "-"}</td>
-      <td>${range}</td>
-      <td>${p.updatedAt ? esc(p.updatedAt.slice(0,16).replace("T"," ")) : "-"}</td>
-      <td>
-        <button class="btn btn-sm" data-act="dup" data-id="${p.id}">複製</button>
-        <button class="btn btn-sm btn-danger" data-act="del" data-id="${p.id}">削除</button>
-      </td>
-    </tr>`;
-  }
-  html += "</tbody></table>";
-  box.innerHTML = html;
 }
 
 /* 確認ダイアログ（ブラウザ標準のconfirmは環境により無効化されるため自前で用意） */
@@ -762,36 +641,6 @@ function confirmDialog(opt){
   });
 }
 
-$("#projList").addEventListener("click", async e=>{
-  const btn = e.target.closest("button[data-act]");
-  if(btn){
-    const p = projects.find(x=>x.id===btn.dataset.id);
-    if(!p) return;
-    if(btn.dataset.act==="del"){
-      const ok = await confirmDialog({
-        title: "この案件を削除しますか？",
-        message: `<span class="em">${esc(p.name||"（無題）")}</span> を削除します。<br>この操作は取り消せません。`,
-        ok: "削除する"
-      });
-      if(ok){
-        projects = projects.filter(x=>x.id!==p.id);
-        persist(); renderList();
-      }
-    }else if(btn.dataset.act==="dup"){
-      const copy = JSON.parse(JSON.stringify(p));
-      copy.id = uid(); copy.name = (p.name||"") + "のコピー";
-      copy.updatedAt = new Date().toISOString();
-      projects.push(copy); persist(); renderList();
-    }
-    return;
-  }
-  const row = e.target.closest("tr.row");
-  if(row) openProject(row.dataset.id);
-});
-$("#filterMonth").addEventListener("input", renderList);
-$("#filterText").addEventListener("input", renderList);
-$("#btnClearMonth").addEventListener("click", ()=>{ $("#filterMonth").value=""; renderList(); });
-
 const SAMPLE_MEMO = `店舗内装工事
 
 8月3日：物件内見・現地調査・採寸
@@ -808,62 +657,13 @@ const SAMPLE_MEMO = `店舗内装工事
 11月17日〜11月26日：什器搬入・開店準備
 11月27日：OPEN`;
 
-function loadSample(){
-  const g = generateFromMemo(SAMPLE_MEMO);
-  const p = {
-    id:uid(), name:"サンプル店舗", title:"サンプル店舗 全体スケジュール（叩き）",
-    memo:SAMPLE_MEMO, openDate:g.openDate, handoverDate:g.handoverDate,
-    lanes:g.lanes, updatedAt:new Date().toISOString()
-  };
-  projects.push(p); persist();
-  openProject(p.id);
-}
-
-$("#btnNew").addEventListener("click", ()=>{
-  const p = {
-    id:uid(), name:"", title:"", memo:"", openDate:"", handoverDate:"",
-    milestones:[], lanes:[{id:uid(), label:"工事関係", bars:[]}],
-    updatedAt:new Date().toISOString()
-  };
-  projects.push(p); persist();
-  openProject(p.id);
-});
-
-$("#btnExport").addEventListener("click", ()=>{
-  const blob = new Blob([JSON.stringify(projects,null,1)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "マスタースケジュール_バックアップ.json";
-  a.click();
-  URL.revokeObjectURL(a.href);
-});
-$("#btnImport").addEventListener("click", ()=>$("#importFile").click());
-$("#importFile").addEventListener("change", e=>{
-  const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader();
-  r.onload = ()=>{
-    try{
-      const data = JSON.parse(r.result);
-      if(!Array.isArray(data)) throw new Error();
-      let added=0, updated=0;
-      for(const p of data){
-        const i = projects.findIndex(x=>x.id===p.id);
-        if(i>=0){ projects[i]=p; updated++; } else { projects.push(p); added++; }
-      }
-      persist(); renderList();
-      alert(`読み込みました（追加 ${added} 件 / 上書き ${updated} 件）`);
-    }catch(err){ alert("ファイルを読み込めませんでした。バックアップ保存したJSONファイルを選んでください。"); }
-    e.target.value="";
-  };
-  r.readAsText(f);
-});
-
 /* ================= 編集画面 ================= */
-function openProject(id){
-  current = projects.find(p=>p.id===id);
-  if(!current) return;
-  $("#listView").classList.add("hidden");
-  $("#editorView").classList.remove("hidden");
+function blankProject(){
+  return { name:"", title:"", memo:"", openDate:"", handoverDate:"",
+           lanes:[{id:uid(), label:"工事関係", bars:[]}] };
+}
+function loadProject(p){
+  current = p;
   $("#genWarn").classList.add("hidden");
   fillForms();
   renderLaneEditor();
@@ -875,16 +675,9 @@ function fillForms(){
   $("#fName").value = current.name||"";
   $("#fTitle").value = current.title||"";
   $("#fMemo").value = current.memo||"";
-  $("#edTitle").textContent = current.name ? current.name : "新規案件";
 }
 
-function markSaved(){
-  current.updatedAt = new Date().toISOString();
-  persist();
-  $("#saveStat").textContent = "保存済み " + new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
-}
 function touch(){
-  markSaved();
   renderPreview();
 }
 
@@ -894,12 +687,27 @@ function touch(){
     current.name = $("#fName").value;
     current.title = $("#fTitle").value;
     current.memo = $("#fMemo").value;
-    $("#edTitle").textContent = current.name || "新規案件";
     touch();
   });
 });
 
-$("#btnBack").addEventListener("click", showList);
+$("#btnSample").addEventListener("click", ()=>{
+  const g = generateFromMemo(SAMPLE_MEMO);
+  loadProject({ name:"サンプル店舗", title:"サンプル店舗 全体スケジュール（叩き）",
+    memo:SAMPLE_MEMO, openDate:g.openDate, handoverDate:g.handoverDate, lanes:g.lanes });
+});
+$("#btnClear").addEventListener("click", async ()=>{
+  const hasData = current && (current.memo || current.name || current.lanes.some(l=>l.bars.length));
+  if(hasData){
+    const ok = await confirmDialog({
+      title: "新しく作り直しますか？",
+      message: "入力中の内容をすべて消して、まっさらな状態から始めます。<br>この操作は取り消せません。",
+      ok: "作り直す"
+    });
+    if(!ok) return;
+  }
+  loadProject(blankProject());
+});
 $("#btnPrint").addEventListener("click", ()=>window.print());
 
 const settings = loadSettings();
@@ -1064,15 +872,23 @@ function renderPreview(){
 }
 
 function fitBarText(){
+  // 1日あたりの列幅に合わせて曜日・日付の文字サイズを決める
+  document.querySelectorAll("#printArea .cal").forEach(tbl=>{
+    const c = tbl.querySelector(".rw-day td:not(.lbl-td)");
+    if(!c) return;
+    const w = c.getBoundingClientRect().width;
+    const fs = Math.max(6.5, Math.min(11, w * 0.62));
+    tbl.style.setProperty("--day-fs", fs.toFixed(1) + "px");
+  });
   document.querySelectorAll("#printArea td.barcell").forEach(cell=>{
     const el = cell.querySelector(".bar-in");
     if(!el) return;
     el.style.fontSize = "";
     el.style.letterSpacing = "";
     const vertical = cell.classList.contains("v");
-    let size = vertical ? 8.5 : 9.5;
+    let size = vertical ? 10.5 : 11.5;
     const over = ()=> el.scrollWidth > cell.clientWidth+1 || el.scrollHeight > cell.clientHeight+1;
-    while(over() && size > 5){
+    while(over() && size > 7){
       size -= 0.5;
       el.style.fontSize = size + "px";
       if(vertical && size < 8) el.style.letterSpacing = "0px";
@@ -1151,11 +967,18 @@ function renderBlockTable(blk, lanes){
 
 /* .lbl-td 用の最小スタイルを補完 */
 const extra = document.createElement("style");
-extra.textContent = `.cal td.lbl-td{background:#fff;font-size:10px;font-weight:600;text-align:center;border:1px solid var(--line);}`;
+extra.textContent = `.cal td.lbl-td{background:#fff;font-size:11px;font-weight:700;color:#111827;text-align:center;border:1px solid var(--line);}`;
 document.head.appendChild(extra);
 
 /* ================= 起動 ================= */
-showList();
+loadProject(blankProject());
+
+// 入力内容は保存されないため、離脱時に確認する
+window.addEventListener("beforeunload", e=>{
+  if(current && (current.memo || current.name || current.lanes.some(l=>l.bars.length))){
+    e.preventDefault(); e.returnValue = "";
+  }
+});
 </script>
 </body>
 </html>
