@@ -209,8 +209,9 @@ input,select,textarea{font-family:inherit; font-size:13px;}
   overflow:hidden; padding:2px 2px;
 }
 .cal td.barcell.v .bar-in{
-  writing-mode:vertical-rl; text-orientation:upright; white-space:normal;
-  margin:0 auto; max-height:calc(var(--lane-h) - 10px); letter-spacing:.5px; font-size:10.5px; padding:2px 0;
+  /* 縦書きはCSSのwriting-modeを使わず、1文字ずつ改行して積む（iOSでの誤描画を避ける） */
+  font-size:10.5px; line-height:1.14; letter-spacing:0; white-space:nowrap;
+  margin:0 auto; max-height:calc(var(--lane-h) - 6px); padding:2px 0;
 }
 
 /* ===== 印刷 ===== */
@@ -957,7 +958,14 @@ function renderBlockTable(blk, lanes){
     cells.forEach((c,idx)=>{
       if(!c){ html += `<td></td>`; return; }
       const showText = c.bar.vertical || widest.get(c.bar).idx === idx;
-      html += `<td colspan="${c.span}" class="barcell ${c.bar.vertical?"v":""}" style="background:${esc(c.bar.color)}"><div class="bar-in">${showText ? esc(c.bar.text).replace(/\n/g,"<br>") : ""}</div></td>`;
+      let inner = "";
+      if(showText){
+        const t = String(c.bar.text || "");
+        inner = c.bar.vertical
+          ? t.replace(/\n/g,"").split("").map(ch=>esc(ch)).join("<br>")   // 1文字ずつ縦に積む
+          : esc(t).replace(/\n/g,"<br>");
+      }
+      html += `<td colspan="${c.span}" class="barcell ${c.bar.vertical?"v":""}" style="background:${esc(c.bar.color)}"><div class="bar-in">${inner}</div></td>`;
     });
     html += `</tr>`;
   }
