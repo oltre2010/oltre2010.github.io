@@ -559,7 +559,7 @@ function generateFromMemo(memo){
       pushBar("工事期間", kStart, kEnd, "#DEEBF7");
     }
     // 引き渡し・各種検査
-    if(handover) pushBar("引き渡し・各種検査", handover, handover, "#DEEBF7", true);
+    if(handover) pushBar("引き渡し・各種検査", handover, handover, "#FFFF00", true);
     // オープン
     if(open) pushBar("OPEN", open, open, "#FFFF00", true);
   }
@@ -627,7 +627,7 @@ function addCustomEvent(ev, bars, periodColor){
   }else if(ev.kind==="range"){
     bars.push({id:uid(), text, start:d2s(ev.date1), end:d2s(ev.date2), color:periodColor||"#DEEBF7", vertical:false});
   }else{
-    const color = ev.cat==="handover" ? "#DEEBF7" : "#EDEDED";
+    const color = ev.cat==="handover" ? "#FFFF00" : "#EDEDED";
     bars.push({id:uid(), text, start:d2s(ev.date1), end:d2s(ev.date1), color, vertical:true});
   }
 }
