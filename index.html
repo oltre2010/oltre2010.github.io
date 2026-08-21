@@ -145,6 +145,7 @@ input,select,textarea{font-family:inherit; font-size:13px;}
 .inline-fields{display:flex; gap:12px; flex-wrap:wrap;}
 .inline-fields .field{flex:1; min-width:130px;}
 .hint{font-size:11.5px; color:var(--faint); margin-top:8px; line-height:1.85;}
+.hint code{background:#f0f3f7; border-radius:4px; padding:1px 5px; font-size:11px; color:#475569;}
 .warn{font-size:12px; color:#a15c00; background:#fff7e8; border:1px solid #f0d9a8; border-radius:6px; padding:8px 10px; margin-top:8px; white-space:pre-line;}
 
 .ed-table{width:100%; border-collapse:collapse;}
@@ -279,7 +280,8 @@ input,select,textarea{font-family:inherit; font-size:13px;}
           </div>
           <button class="btn btn-primary" id="btnGenerate">メモから叩きを生成</button>
           <div class="hint">
-            「9/1 オープン」「8/15 引渡」「7月上旬 着工」「5月 内装協議」のように<b>日付＋内容</b>を1行ずつ書いてください。
+            <b>日付＋内容</b>を1行ずつ書いてください（例：<code>8月21日　見積提出</code>／<code>8月1〜12日　図面UP</code>）。<br>
+            前後の予定から作業期間を補います。上の例なら「8/1〜11 図面作成期間」「8/12 図面UP」「8/13〜20 見積期間」「8/21 見積提出」に展開されます。<br>
             オープン日だけでも、引渡し・着工・準備期間を逆算して叩きを作ります。生成後は下の表で自由に修正できます。
           </div>
           <div id="genWarn" class="warn hidden"></div>
@@ -365,6 +367,9 @@ function parseMemo(memo){
 
   for(const line of lines){
     const rangeM = line.match(/((?:\d{4}[\/年])?\d{1,2}[\/月]\d{1,2}日?)\s*[〜~～\-ー–—]\s*((?:\d{4}[\/年])?\d{1,2}[\/月]\d{1,2}日?)/);
+    // 「8月1〜12日」「8/1〜12」のように後半の月を省略した書き方
+    const shortRangeM = rangeM ? null
+      : line.match(/(?:(\d{4})[\/年])?(\d{1,2})[\/月](\d{1,2})日?\s*[〜~～\-ー–—]\s*(\d{1,2})日?(?![\/月])/);
     const fullM = line.match(fullDateRe);
     const monthM = line.match(monthOnlyRe);
     let ev = null;
@@ -374,6 +379,12 @@ function parseMemo(memo){
         y1:a[1]?+a[1]:null, m1:+a[2], d1:+a[3],
         y2:b[1]?+b[1]:null, m2:+b[2], d2:+b[3],
         text: line.replace(rangeM[0],"").trim()};
+    }else if(shortRangeM){
+      const y = shortRangeM[1] ? +shortRangeM[1] : null;
+      ev = {kind:"range",
+        y1:y, m1:+shortRangeM[2], d1:+shortRangeM[3],
+        y2:y, m2:+shortRangeM[2], d2:+shortRangeM[4],
+        text: line.replace(shortRangeM[0],"").trim()};
     }else if(fullM){
       ev = {kind:"date", y1:fullM[1]?+fullM[1]:null, m1:+fullM[2], d1:+fullM[3],
         text: line.replace(fullM[0],"").trim()};
@@ -502,8 +513,19 @@ function generateFromMemo(memo){
         pushBar("工事期間", kStart, kEnd, nextColor());
         continue;
       }
+      // 「8/1〜8/12 図面UP」のように最終日に完了する予定は、手前を作業期間として分ける
+      if(ev.kind === "range" && DONE_RE.test(ev.text)){
+        const nm = milestoneWork(ev.text);
+        const pEnd = addDays(ev.date2, -1);
+        if(nm && pEnd >= ev.date1){
+          pushBar(nm + "期間", ev.date1, pEnd, nextColor());
+          pushBar(ev.text, ev.date2, ev.date2, "#EDEDED", true);
+          continue;
+        }
+      }
       addCustomEvent(ev, bars, (ev.kind==="range"||ev.kind==="month") ? nextColor() : null);
     }
+    bars.push(...fillPrepPeriods(bars, nextColor));
   }else{
     // 逆算モード：オープン日などの基点から標準工程を補完
     if(open && !handover) handover = addDays(open,-14);
@@ -552,6 +574,44 @@ function generateFromMemo(memo){
     lanes:[{id:uid(), label:"工事関係", bars}],
     warnings
   };
+}
+
+/* マイルストーン名から、その手前に必要な作業期間の名前を導く。
+   導けないものは期間を作らない（勝手な推測を避けるため） */
+function milestoneWork(t){
+  if(!t || /[・、]/.test(t) || t.length > 10) return null;
+  if(/図面|作図/.test(t)) return "図面作成";
+  if(/見積/.test(t)) return "見積";
+  if(/設計/.test(t)) return "設計";
+  if(/レイアウト|プラン/.test(t)) return "レイアウト検討";
+  if(/申請|届出|許可/.test(t)) return "申請";
+  if(/業者|施工会社|施工店/.test(t)) return "業者選定";
+  if(/発注|手配/.test(t)) return "発注";
+  return null;
+}
+/* 「〜UP」「〜提出」など、その日に完了する類の予定か */
+const DONE_RE = /(UP|ＵＰ|アップ|提出|完了|確定|決定|納品|承認|締切)/i;
+
+/* 予定と予定の間の空いた日を「〜期間」で埋める */
+function fillPrepPeriods(bars, nextColor){
+  const add = [];
+  bars.filter(b=>b.vertical).forEach(mk=>{
+    const nm = milestoneWork(mk.text);
+    if(!nm) return;
+    let prevEnd = null;
+    bars.forEach(b=>{
+      if(b === mk || b.end >= mk.start) return;
+      if(!prevEnd || b.end > prevEnd) prevEnd = b.end;
+    });
+    if(!prevEnd) return;
+    const gs = d2s(addDays(s2d(prevEnd), 1));
+    const ge = d2s(addDays(s2d(mk.start), -1));
+    if(gs > ge) return;
+    if((s2d(ge) - s2d(gs)) / 86400000 + 1 < 2) return;          // 1日だけの隙間は埋めない
+    if(bars.concat(add).some(b => !(b.end < gs || b.start > ge))) return;  // 既に何かある
+    add.push({id:uid(), text:nm+"期間", start:gs, end:ge, color:nextColor(), vertical:false});
+  });
+  return add;
 }
 
 function addCustomEvent(ev, bars, periodColor){
